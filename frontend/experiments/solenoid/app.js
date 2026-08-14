@@ -1204,6 +1204,8 @@ function attemptFacts() {
   if (!report) return {};
   return {
     leakage: (100 * (report.metrics?.leakage_ratio ?? 0)).toFixed(2),
+    flux: (1000 * (report.metrics?.flux_core ?? 0)).toFixed(2),
+    ampereTurns: Math.round(report.metrics?.ampere_turns ?? 0),
   };
 }
 

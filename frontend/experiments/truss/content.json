@@ -67,14 +67,16 @@
       "id": "compression",
       "heading": "Compression and length",
       "body": [
-        "A bar in tension gives way when the material reaches its strength. A bar in compression can bow out long before that. For the same section, long bars are the ones buckling threatens."
+        "A bar in tension gives way when the material reaches its strength. A bar in compression can bow out long before that. For the same section, long bars are the ones buckling threatens.",
+        "In your attempt it is bar **{bar}**, {barLength} m long, that decides the mission: it is limited by {limitedBy}, not by the material's strength."
       ]
     },
     {
       "id": "height",
       "heading": "Height changes where the forces go",
       "body": [
-        "A taller lattice can carry the same load with smaller forces in the top and bottom chords. In exchange its diagonals are longer and it may need more material. There is no height that is best everywhere."
+        "A taller lattice can carry the same load with smaller forces in the top and bottom chords. In exchange its diagonals are longer and it may need more material. There is no height that is best everywhere.",
+        "Your lattice, as drawn, weighs {mass} kg and works its busiest bar at {utilisation}% of capacity."
       ]
     }
   ],
@@ -86,6 +88,32 @@
     "prerequisites": "A qualitative feel for balance of forces, and proportion.",
     "duration": "25–40 minutes, depending on how free the building is."
   },
+  "guide": [
+    {
+      "id": "shape",
+      "heading": "Why a triangle is what holds",
+      "body": [
+        "Take four slats and pin them at the corners to make a square. Push one side sideways: the square collapses into a rhombus, and not one slat has changed length. Nothing about that shape resists twisting.",
+        "Now add a fifth slat along the diagonal. The square locks solid: the diagonal has split it into two triangles, and a triangle cannot change its angles without a side getting longer or shorter — which the slats, by assumption, do not do. A truss bridge is built almost entirely out of that one idea, repeated many times from one bank to the other."
+      ]
+    },
+    {
+      "id": "loads",
+      "heading": "Pulling is not the same as pushing",
+      "body": [
+        "Try pulling a rope from both ends: it goes taut, and carries an enormous load for its weight. Try pushing it instead: it bows sideways long before it breaks. A rigid bar resists a push better than a rope does, but it too has a limit — and it is a different limit from the one the material itself gives way at.",
+        "The bars in this lattice behave the same way: the ones in tension give way when the material yields, the ones in compression can bow sideways long before that. A long, slender bar in compression is almost always a truss's weak point, well before the steel ever reaches its own limit."
+      ]
+    },
+    {
+      "id": "play",
+      "heading": "Build it yourself",
+      "body": [
+        "The lattice this page opens with carries the traffic but falls short: one bar in compression is already past what it can take. You have three levers, and they are not interchangeable: shape — where the joints and diagonals sit, height — how deep the lattice is, and section — how thick the bars are.",
+        "Drag the joints, add or remove a diagonal, then compute. Watch which bar turns red — that is the one deciding the result — and work out whether shortening it, thickening it, or redrawing the geometry around it is the cheaper fix. That is the exercise."
+      ]
+    }
+  ],
   "sections": [
     {
       "id": "problem",

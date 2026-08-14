@@ -57,14 +57,16 @@
       "id": "iron-path",
       "heading": "Il campo preferisce il ferro, ma deve attraversare l'aria",
       "body": [
-        "Il ferro offre al flusso magnetico un percorso molto più favorevole dell'aria. Nel traferro, però, il campo non ha alternativa. Anche pochi millimetri possono quindi dominare il comportamento dell'intero circuito."
+        "Il ferro offre al flusso magnetico un percorso molto più favorevole dell'aria. Nel traferro, però, il campo non ha alternativa. Anche pochi millimetri possono quindi dominare il comportamento dell'intero circuito.",
+        "Nel tuo tentativo il nucleo porta {flux} mWb per metro di profondità con {ampereTurns} amperspire: è quel numero, non la qualità del ferro, a decidere se l'obiettivo è raggiunto."
       ]
     },
     {
       "id": "leakage",
       "heading": "La dispersione non è un difetto del calcolo",
       "body": [
-        "Una parte del flusso si richiude nell'aria accanto al nucleo invece che attraverso il traferro. È quello che fa il campo, non un errore: il valore di dispersione dice quanta parte del lavoro dell'avvolgimento sta andando dove il circuito non era stato progettato per usarla."
+        "Una parte del flusso si richiude nell'aria accanto al nucleo invece che attraverso il traferro. È quello che fa il campo, non un errore: il valore di dispersione dice quanta parte del lavoro dell'avvolgimento sta andando dove il circuito non era stato progettato per usarla.",
+        "Nel tuo tentativo è il {leakage}% del flusso a mancare il nucleo lungo questa via."
       ]
     },
     {

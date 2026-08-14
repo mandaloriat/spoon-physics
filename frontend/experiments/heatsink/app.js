@@ -55,6 +55,7 @@ import {
   showStats,
   syncFieldOptions,
 } from '/shared/experiment.js';
+import { createGuide } from '/shared/guide.js';
 import { contentUrl, num, t } from '/shared/i18n.js';
 import * as runs from '/shared/runs.js';
 import { createWorkspace } from '/shared/workspace.js';
@@ -79,6 +80,7 @@ const ENVELOPE_HEIGHT = 0.09;
 
 const dom = Object.fromEntries(
   [
+    'guide',
     'lesson',
     'viewer',
     'workspace',
@@ -652,6 +654,7 @@ let workspace = null;
 let content = null;
 let lastSweep = null;
 let selected = new Set();
+let guide = null;
 
 function solver() {
   return catalogue.all.find((entry) => entry.name.startsWith(SOLVER_PREFIX)) ?? null;
@@ -1028,6 +1031,7 @@ function attemptFacts() {
   return {
     channel: channelWidth().toFixed(1),
     temperature: (report.metrics?.t_max ?? 0).toFixed(0),
+    fins: Math.round(shape.finCount),
   };
 }
 
@@ -1042,6 +1046,25 @@ function attemptFacts() {
  */
 const path = mountPath(dom.path, { exercise: EXERCISE });
 let prediction = null;
+
+/**
+ * Build the guided path, if this exercise's content file carries one.
+ *
+ * `content.guide` being absent is not an error — it is an exercise that has not been given a
+ * lesson yet, and the page is exactly what it was before. See `airfoil/app.js` for a version
+ * with figures and interactive presets; this page's chapters are prose only.
+ */
+function mountGuide() {
+  if (!content.guide?.length) return;
+  guide = createGuide({
+    root: dom.guide,
+    chapters: content.guide,
+    storageKey: `spoon-physics:guide:${EXERCISE}`,
+    onSkip: () => {
+      dom.workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+  });
+}
 
 function mountLoop() {
   if (content?.prediction) {
@@ -1069,6 +1092,7 @@ try {
   catalogue = solvers;
   mountLoop();
   renderLesson({ content, intro: null, lesson: dom.lesson, open: ['problem'] });
+  mountGuide();
   present();
   refreshRuns();
 

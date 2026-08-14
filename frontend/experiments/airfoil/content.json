@@ -71,21 +71,22 @@
       "id": "pressure",
       "heading": "The force comes out of the pressure",
       "body": [
-        "The computation adds up the pressure over the whole surface. In your attempt the distribution is not the same above and below the section, so the resultant has a component pointing up. The same thing can be read a second way, by looking at how much the flow is turned."
+        "The computation adds up the pressure over the whole surface. In your attempt, at {alpha}°, the distribution is not the same above and below the section: the resultant is {lift} N/m pointing up. The same thing can be read a second way, by looking at how much the flow is turned."
       ]
     },
     {
       "id": "angle-camber",
       "heading": "Angle and camber are not the same lever",
       "body": [
-        "Raising the angle changes the whole field around the same shape. Adding camber changes the shape that guides the flow. Either can raise the lift, and they do not leave the section with the same tendency to twist."
+        "Raising the angle changes the whole field around the same shape. Adding camber changes the shape that guides the flow. Either can raise the lift, and they do not leave the section with the same tendency to twist.",
+        "Your attempt is at {alpha}°: try holding the angle still and changing only the profile, to see which of the two levers you just moved."
       ]
     },
     {
       "id": "no-stall",
       "heading": "This model cannot show you a stall",
       "body": [
-        "There is no viscosity here and no separated flow. The computation can therefore go on raising the lift past the point where a real section would begin to stall. A numerically settled result does not make that prediction valid."
+        "Your attempt is at {alpha}°. This model has no viscosity and no separated flow, so it can keep handing you more lift at every angle, even past the point where a real section would start losing it. The result stays numerically settled, but settled does not mean valid — the **Limits of the model** section below says how far."
       ]
     }
   ],

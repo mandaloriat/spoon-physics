@@ -71,21 +71,22 @@
       "id": "pressure",
       "heading": "La forza nasce dalla pressione",
       "body": [
-        "Il calcolo somma la pressione su tutta la superficie. Nel tuo tentativo la distribuzione non è uguale sopra e sotto il profilo: la risultante ha una componente verso l'alto. Lo stesso fenomeno si può leggere anche osservando come il flusso viene deviato."
+        "Il calcolo somma la pressione su tutta la superficie. Nel tuo tentativo, a {alpha}°, la distribuzione non è uguale sopra e sotto il profilo: la risultante vale {lift} N/m verso l'alto. Lo stesso fenomeno si può leggere anche osservando come il flusso viene deviato."
       ]
     },
     {
       "id": "angle-camber",
       "heading": "Angolo e curvatura non fanno la stessa cosa",
       "body": [
-        "Aumentare l'angolo modifica l'intero campo attorno allo stesso profilo. Aumentare la curvatura cambia invece la forma che guida il flusso. Entrambe le scelte possono aumentare la portanza, ma non producono la stessa tendenza a ruotare."
+        "Aumentare l'angolo modifica l'intero campo attorno allo stesso profilo. Aumentare la curvatura cambia invece la forma che guida il flusso. Entrambe le scelte possono aumentare la portanza, ma non producono la stessa tendenza a ruotare.",
+        "Il tuo tentativo è a {alpha}°: prova ora a lasciare fermo l'angolo e a cambiare solo il profilo, per vedere quale delle due leve hai appena mosso."
       ]
     },
     {
       "id": "no-stall",
       "heading": "Il modello non mostra lo stallo",
       "body": [
-        "Questo modello non include viscosità e separazione del flusso. Può quindi continuare ad aumentare la portanza anche dove un profilo reale inizierebbe a stallare. Un risultato numericamente stabile non rende valida quella previsione."
+        "Il tuo tentativo è a {alpha}°. Il modello qui non include viscosità né separazione del flusso: può quindi continuare a darti più portanza a ogni angolo, anche oltre il punto in cui un profilo reale comincerebbe a perderla. Il risultato resta numericamente stabile, ma stabile non vuol dire valido — la sezione **Limiti del modello**, più sotto, dice fin dove."
       ]
     }
   ],

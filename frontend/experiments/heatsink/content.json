@@ -58,21 +58,24 @@
       "id": "surface",
       "heading": "More surface helps",
       "body": [
-        "Fins add surface for heat to leave through. As long as the air can still move between them, and the heat still reaches their tips, adding more can bring the temperature down."
+        "Fins add surface for heat to leave through. As long as the air can still move between them, and the heat still reaches their tips, adding more can bring the temperature down.",
+        "Your attempt has {fins}: check the study panel to see whether the temperature still falls as you add more, or has already stopped."
       ]
     },
     {
       "id": "channels",
       "heading": "Narrow channels hold the air back",
       "body": [
-        "In natural convection the warm air has to rise between the fins. When the gap gets too narrow that motion becomes less effective. The surface keeps growing, but every centimetre added works less well than the last."
+        "In natural convection the warm air has to rise between the fins. When the gap gets too narrow that motion becomes less effective. The surface keeps growing, but every centimetre added works less well than the last.",
+        "In your attempt the channel between two fins is {channel} mm wide."
       ]
     },
     {
       "id": "radiation",
       "heading": "Surfaces hide each other too",
       "body": [
-        "Radiation carries heat away to the surroundings. In a narrow channel, though, one flank of a fin mostly sees the neighbouring fin, which is at a similar temperature, and much less of the room. That route out loses effectiveness as well."
+        "Radiation carries heat away to the surroundings. In a narrow channel, though, one flank of a fin mostly sees the neighbouring fin, which is at a similar temperature, and much less of the room. That route out loses effectiveness as well.",
+        "Your heat sink settles at {temperature}°C: the hotter it runs, the more the radiated share would matter, if the channel let it see the room at all."
       ]
     }
   ],
@@ -84,6 +87,32 @@
     "prerequisites": "Temperature, power, and reading a curve.",
     "duration": "20–30 minutes with the sweep and the design."
   },
+  "guide": [
+    {
+      "id": "surface",
+      "heading": "Why metal helps you cool something",
+      "body": [
+        "Touch a radiator that is on and it feels hottest close to the pipe, cooler out on the wide fins: heat leaves the metal fastest where the metal touches the most air. More exposed surface means more ways out for the same heat, in the same time.",
+        "A heat sink does the same job around an electronic component: it adds fins to multiply the surface touching the air, trying to keep the component as cool as possible without spending more metal than it has to."
+      ]
+    },
+    {
+      "id": "channels",
+      "heading": "The surprise: more fins is not always better",
+      "body": [
+        "Fan yourself with a fan whose ribs are almost touching: you feel almost no air move, even though there are plenty of ribs. The narrow gap blocks the air's motion more than the extra surface can make up for.",
+        "A heat sink's fins can do the same thing to themselves: packed too close, the warm air can no longer rise freely between them. That is why adding fins does not lower the temperature forever — somewhere there is a fin count that works better than every other one, and it is neither the smallest nor the largest you could fit."
+      ]
+    },
+    {
+      "id": "play",
+      "heading": "Find the trade-off yourself",
+      "body": [
+        "The component to cool, the aluminium budget and the maximum temperature are already fixed: your job is to choose how many fins to use, and how tall and thick to make them.",
+        "The study panel computes a whole sweep of fin counts in one go. See where the temperature bottoms out — that is your starting point — then see how much that solution weighs, because the score rewards getting there with less metal, not with more fins."
+      ]
+    }
+  ],
   "sections": [
     {
       "id": "problem",
