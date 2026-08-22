@@ -98,3 +98,35 @@ def solenoid_geometry():
             },
         ],
     }
+
+
+@pytest.fixture
+def heatsink3d_geometry():
+    """A small, valid ``regions3d`` payload: the space an extrusion may occupy.
+
+    Like the two above, deliberately not the page's own envelope. What it does share with the
+    page is the shape of the payload and the *role*: one `box3d` region standing for the site,
+    with the profile itself in `params` — the split ADR-019 settled, one coordinate wider.
+
+    The length of the extrusion is the `z` extent of these bounds and is not a parameter
+    anywhere. That is protocol 1.17's whole point in one fixture: before it there was nowhere
+    on the wire to put this number, so it travelled as a multiplier and no server could refuse
+    a solve that ignored it.
+    """
+    eps = 1e-6
+    return {
+        "type": "regions3d",
+        "bounds": [0.0, 0.0, 0.0, 0.060, 0.030, 0.060],
+        "background": {},
+        "regions": [
+            {
+                "name": "envelope",
+                "shape": {
+                    "type": "box3d",
+                    "min": [eps, eps, eps],
+                    "max": [0.060 - eps, 0.030 - eps, 0.060 - eps],
+                },
+                "material": {},
+            }
+        ],
+    }
