@@ -183,3 +183,55 @@ export function paramSpec(solver, name) {
   if (property.enum) spec.enum = property.enum;
   return spec;
 }
+
+/**
+ * Cut a plane through a three-dimensional result and get back something the viewer can draw.
+ *
+ * **Why this is here and not in the widget.** `<fs-viewer>` is a canvas renderer for `grid2d`
+ * and `mesh2d` and upstream's ADR 0006 is explicit that it stays exactly that: a solid is
+ * *seen* by cutting it, and the cut is a field query the server already runs. So the browser
+ * story for three dimensions is this function — two POSTs and a merge — rather than a WebGL
+ * backend, and the lab drew its first solid without a line of rendering code.
+ *
+ * **Why it asks for each field separately and merges them.** The `slice` operation answers for
+ * one named field, which is right: its budget is per query and a caller usually wants one.
+ * The page's field picker, though, switches between fields on a result that is already drawn,
+ * and re-cutting on every switch would put a round trip behind a `<select>`. Both cuts are the
+ * same plane through the same mesh, so their grids are identical and merging them is safe —
+ * asserted here rather than assumed, because a server that changed the sampling between two
+ * calls would otherwise paint one field's values on the other's grid.
+ *
+ * @param {string} jobId the finished job
+ * @param {{fields: string[], axis: 'x'|'y'|'z', value: number, samples?: number}} plane
+ * @returns {Promise<{kind: 'grid2d', data: object, plane: object, missed: number}>}
+ */
+export async function sliceOf(jobId, { fields, axis, value, samples = 192 }) {
+  const cuts = await Promise.all(
+    fields.map(async (field) => {
+      const response = await fetch(client.url(`/api/v1/jobs/${jobId}/query`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ field, op: 'slice', axis, value, samples }),
+      });
+      if (!response.ok) {
+        throw new Error(t('experiment.sliceFailed', { status: response.status }));
+      }
+      return { field, answer: (await response.json()).result };
+    }),
+  );
+
+  const [first] = cuts;
+  const merged = {
+    bounds: first.answer.data.bounds,
+    shape: first.answer.data.shape,
+    fields: {},
+    ...(first.answer.data.mask ? { mask: first.answer.data.mask } : {}),
+  };
+  for (const { field, answer } of cuts) {
+    if (String(answer.data.shape) !== String(merged.shape)) {
+      throw new Error(t('experiment.sliceMismatch'));
+    }
+    merged.fields[field] = answer.data.fields[field];
+  }
+  return { kind: 'grid2d', data: merged, plane: first.answer.plane, missed: first.answer.missed };
+}

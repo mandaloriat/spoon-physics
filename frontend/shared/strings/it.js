@@ -81,6 +81,9 @@ export default {
   /* ------------------------------------------------------------ la struttura delle pagine */
 
   experiment: {
+    sliceFailed: 'Il server non è riuscito a tagliare quel piano (HTTP {status}).',
+    sliceMismatch:
+      'Due tagli dello stesso piano sono tornati su griglie diverse, quindi non ne viene disegnato nessuno.',
     pageTitle: '{title} — Spoon Physics',
     notSet: 'non impostato',
     submitting: 'Invio in corso…',
@@ -1131,6 +1134,32 @@ export default {
       'Una sfida di fisica: tieni fresco un componente da 30 W con un budget di massa, e trova il numero di alette oltre il quale aggiungerne peggiora le cose. Prova a prevedere dove sta l’ottimo prima di calcolarlo.',
     eyebrow: 'Superficie, passaggio dell’aria e massa',
     heading: 'Quante alette servono davvero?',
+    planeLabel: 'Taglio',
+    planeAria: 'Piano di taglio attraverso il solido',
+    planePosition: 'Dove',
+    planePositionTitle: 'Dove si trova il piano lungo la sua normale.',
+    plane: {
+      z: 'Di traverso — la sezione trasversale',
+      y: 'Attraverso la base — dove sta la diffusione',
+      x: "Lungo un'aletta",
+    },
+    planeNote: {
+      z: 'Una sezione trasversale a {position} mm lungo la lunghezza. È la figura che disegna il solutore sulla sezione, e lontano dal componente non è la stessa.',
+      y: 'Un taglio nel metallo a {position} mm sopra la base. Il gradiente lungo la lunghezza è la resistenza di diffusione, vista direttamente.',
+      x: "Un taglio a {position} mm sulla base, guardando lungo l'estruso.",
+    },
+    modelHeading: 'Sezione o solido',
+    modelLead:
+      'La sezione trasversale è esatta per un estruso e assume che il componente lo scaldi in modo uniforme su tutta la lunghezza. Risolvi invece il corpo e il componente può essere più corto del dissipatore — il che costa una resistenza di diffusione, e guadagna due estremità tagliate.',
+    modelPick: 'Cosa si risolve',
+    model: {
+      section: 'La sezione trasversale',
+      solid: 'Il corpo intero',
+      sectionNote:
+        "Si assume che il componente scaldi la base uniformemente su tutta la lunghezza. Esatto per la conduzione, ed è l'ipotesi che un componente reale rompe.",
+      solidNote:
+        'Il componente copre il {covered}% della lunghezza. Il resto della base deve raggiungere le sue alette di lato, e le due estremità tagliate sono superficie che la sezione non aveva.',
+    },
     schematicTitle: "Sezione del dissipatore: base alettata con sotto l'impronta del componente",
     legendMetal: 'alluminio',
     legendAir: 'aria',
@@ -1187,6 +1216,12 @@ export default {
         "Aria ferma, o una ventola lungo l'estrusione. Il numero di alette migliore non è lo stesso.",
       velocity: "Velocità dell'aria",
       velocityTitle: 'Velocità frontale lungo i canali.',
+      depth: 'Lunghezza estrusa',
+      depthTitle:
+        'Quanto è lungo il pezzo di estruso. È sempre stata parte della risposta — ogni watt e ogni grammo è per unità di profondità moltiplicato per questa — e dove viaggia dipende da cosa si risolve.',
+      footprintDepth: 'Lunghezza del componente',
+      footprintDepthTitle:
+        'Quanta di quella lunghezza il componente tocca davvero. Il solutore sulla sezione non ha dove metterla; quello sul solido è costruito attorno a questa.',
       flush: 'Montato a contatto',
       flushHint:
         'Con la faccia inferiore bloccata dal montaggio, non perde nulla da lì. Senza spunta, la base raffredda anche di sotto.',
@@ -1222,6 +1257,11 @@ export default {
       viewFactor: 'Fattore di vista verso la stanza',
       h: 'Coefficiente di convezione',
       flux: 'Flusso conduttivo massimo',
+      extruded: 'Resistenza, modello estruso',
+      spreading: 'Resistenza di diffusione',
+      endGain: 'Quanto restituiscono le due estremità',
+      endLoss: 'Calore uscito dalle estremità',
+      needsSolid: 'serve il corpo intero',
     },
     checks: {
       energy: 'Bilancio energetico',
@@ -1242,6 +1282,7 @@ export default {
       mass: 'massa kg',
       radiative: 'quota rad.',
       energy: 'energia',
+      depthCorrection: 'correzione 3-D',
     },
     shapeLabel: '{fins} alette · alte {height} mm · spesse {thickness} mm · base {base} mm',
     plots: {

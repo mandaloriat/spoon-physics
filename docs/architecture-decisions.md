@@ -1144,6 +1144,88 @@ which is why the hierarchy went first.
 
 ---
 
+## ADR-023 — The heat sink gets a third dimension, and what it buys is the spreading resistance
+
+**Decision.** `lab.heatsink3d` is a **second capability** beside `lab.heatsink2d`, not a
+parameter on it. It takes `regions3d`, returns `mesh3d`, and reads the extrusion length off the
+geometry's `z` extent instead of out of `params`. The plane adapter keeps the fin-count sweep
+and the finer grid; neither is deprecated, and the page offers the choice.
+
+**Why a third dimension at all, when the plane solve is exact.** It *is* exact — an extrusion is
+prismatic, so there is no third-dimension conduction to neglect, and `lab.heatsink2d` says so in
+an assumption. What it also assumes, in the same breath, is that **the device heats the base
+evenly along the whole length**. A 30 mm die on a 60 mm extrusion does not. The heat has to run
+sideways along the base to reach the far fins, and that run costs a temperature drop the plane
+problem has nowhere to put.
+
+That is exactly the failure upstream's
+[ADR 0006](https://github.com/mandaloriat/fenix-spoon/blob/main/docs/adr/0006-three-dimensions.md)
+admitted `regions3d` to prevent: a plane kind carries an unwritten *per unit depth*, so a caller
+who means a real body can neither say so nor be told. Until protocol 1.17 the length travelled
+as `params.depth` — a multiplier no server could check — and the lab was the caller in question.
+
+**Two capabilities and not a switch, because the refusal is the whole point.** A boolean on one
+adapter would accept either payload and answer whichever problem it felt like. Two adapters
+declaring different `geometry_types` make each refusal a `422` from the server before any lab
+code runs, and it cost one line each. `tests/test_app.py` submits both ways round.
+
+**What it found, and the finding is not the one that was expected.** The third dimension adds
+**two** effects of opposite sign, so the run is three solves and every term is measured rather
+than apportioned:
+
+```
+R  =  R_extruded  +  spreading  -  end_gain
+```
+
+- `R_extruded` — `lab.heatsink2d`'s answer, on the **same in-plane grid**, so the difference is
+  the third dimension and not two discretisations disagreeing;
+- `spreading` — the same body with its two cut ends held adiabatic, which isolates the sideways
+  run. Always positive;
+- `end_gain` — what the two ends give back, because they are surface and the plane model has
+  none.
+
+On the nominal 60 mm sink the ends are worth **more** than the spreading costs, and the plane
+model comes out about 2.6% *pessimistic*. Stretch the same die to a 200 mm extrusion and the
+spreading wins by about 14%. Reporting only the net would have read as *three dimensions do not
+matter here*, when what is true is that two effects of a few percent happened to cancel — so
+the two terms are reported separately and `end_loss_fraction` measures the second one directly.
+
+**The claim that three dimensions add exactly one thing is tested, not asserted.** There is a
+configuration in which the extra thing does nothing: device along the whole length, ends shut.
+There `lab.heatsink3d` reproduces `heatsink.solve` on the same grid to eleven figures, and the
+agreement is reported to the visitor as the `extruded_limit` residual rather than living only in
+a test. Everything on the boundary is *reused* rather than reimplemented — the channel is the
+same channel, longer — so `correlations.py` and `viewfactors.py` are untouched and the one new
+approximation, radiative exchange **along** a channel, is declared as `prismatic_radiation`.
+
+**What comes back, and why the browser needed nothing.** A `mesh3d`, retiled coarser than the
+solve grid — by the same rule, so no fin disappears — because six tetrahedra per solved cell is
+tens of megabytes of JSON for a picture nobody can see that finely. The page draws it by asking
+for a `slice`, which is a `grid2d`, which is what `<fs-viewer>` has drawn since 1.0. **Zero
+lines of rendering code**, which is ADR 0006 §6 working as advertised and the reason the lab
+could take three dimensions in one change rather than in a WebGL project.
+
+**Cost.** Three things, all real.
+
+- **Time.** Six seconds at the shipped resolution against one for the section, and a plane
+  change is a round trip of about a second and a half. The fin-count sweep — twenty solves, and
+  the point of the exercise — stays on the plane solver, and the button is disabled rather than
+  hidden so a visitor can see why.
+- **A coarser grid.** The cell count is the section times the stations, so the in-plane grid
+  ships coarser here than the plane adapter's default. The reference solve runs on the same one,
+  which is what keeps the *difference* trustworthy even where the absolute number is coarser.
+- **A metric declaration that had to be weakened.** `t_max` and `flux_max` are declared with no
+  `field`/`reduction` here, unlike on the plane adapter. Upstream would happily compute them
+  from the declaration — but from the *retiled* mesh, which is not the field the peak came from,
+  and two answers to one question is the failure. The adapter supplies both instead.
+
+**What this does not do.** It does not make the heat sink a 3-D exercise. The challenge is still
+fin count, the sweep is still the headline, and the solid is the second question a visitor asks
+once the first has an answer.
+
+
+---
+
 ## Deferred
 
 Not built, on purpose. Each would have been a plausible use of the kickstart's time; none
@@ -1158,7 +1240,7 @@ would have made the one finished experiment better.
 | **Per-IP rate limiting on by default** | Needs a custom Caddy build. Configured and commented in the Caddyfile; see ADR-010. |
 | **Publishing the lab image to GHCR** | The server builds from the checkout, which keeps one source of truth while the project is one person and one machine. A published image matters when a second deployment does. |
 | **A FEniCSx job in CI** | Would mean pulling a 3 GB image and running a real solve on every push, for a code path this repository does not own — the adapters are upstream's and are tested there in that exact image. CI builds and runs the slim image, which exercises everything the lab actually wrote. |
-| **STEP upload, 3D, Navier–Stokes, automatic optimisation** | All need protocol capabilities that do not exist yet: `step3d` geometry, 3D result kinds. (Vector fields were in this list and are not any more — both lab solvers that have one publish it, and the workspace integrates streamlines from it.) Upstream's roadmap, not the lab's. |
+| **STEP upload, Navier–Stokes, automatic optimisation** | Still upstream's roadmap rather than the lab's. `step3d` in particular is *deliberately* unasked upstream — an imported face has no name that survives a re-import, so a load case could bind to a face that silently moved — and that reasoning is now written down rather than pending. (3-D was in this row and is not any more: protocol 1.17 landed `regions3d` and `mesh3d`, and [ADR-023](#adr-023--the-heat-sink-gets-a-third-dimension-and-what-it-buys-is-the-spreading-resistance) is the lab using them. Vector fields left before that, for the same kind of reason.) |
 | **MCP / local agent interface** | No longer unimplemented upstream — M2.5 landed whole in the pin the lab now runs, so `fenix-spoon rpc --stdio`, the MCP adapter and the CLI all exist. Still deferred here, and for a different reason than before: the lab is a *public web* application with anonymous quotas, and none of those transports is reachable through a browser. What would bring it back is a reason for a script to drive this deployment rather than its own. |
 | **A continuous incidence control** | The panel method is exactly linear in α, so two solves determine the flow at *every* angle and a slider could redraw the field at 60 fps with no further jobs — which would fix both halves of what ADR-021 measured: three seconds and 2.5 MB per preset click, against a budget of 100 jobs an hour shared by everyone. It is a proposal rather than a commit because of §8 of the contract, not because of the arithmetic: the page would be showing numbers it computed itself from a basis the solver published, and in a lab that reports a residual on every run that is a different claim and needs its own verification, its own answer to what a kept run records, and a rule for when the basis goes stale. Written up in [docs/proposals/instant-incidence.md](proposals/instant-incidence.md). What would bring it back is a session willing to spend itself on the verification story rather than on the interpolation. |
 | **Analytics** | None. A page that reports nothing needs no cookie banner and no privacy policy, and the lab collects no personal data at all. |
