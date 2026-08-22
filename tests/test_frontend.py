@@ -226,6 +226,9 @@ def test_the_solenoid_page_renders_the_field_and_draws_its_own_cross_section(cli
         "/vendor/fenix-spoon/client/index.js",
         "/vendor/fenix-spoon/geometry-2d/index.js",
         "/vendor/fenix-spoon/viewer/index.js",
+        # Not the package index: `shared/curve.js` takes upstream's axis arithmetic and not
+        # its element, so this is the one module of `@fenix-spoon/plot` the site names.
+        "/vendor/fenix-spoon/plot/scale.js",
         "/shared/lab.css",
         "/shared/api.js",
         "/shared/components.js",
@@ -261,9 +264,15 @@ def test_static_assets_the_pages_reference_are_reachable(client, path):
 def test_the_import_map_matches_what_is_vendored(client, name):
     """Every experiment's import map targets must resolve, and they need not be the same set.
 
-    The airfoil resolves three packages, the solenoid two — it has no geometry to edit with
-    the editor widget. What must hold for both is that whatever the page declares is actually
-    served, because a bare specifier that resolves to a 404 is a page that does nothing.
+    The airfoil resolves four entries, the other three resolve three — none of them has a
+    geometry to edit with the editor widget. What must hold for all of them is that whatever
+    the page declares is actually served, because a bare specifier that resolves to a 404 is a
+    page that does nothing.
+
+    One of the four is a *module* rather than a package: `@fenix-spoon/plot/scale.js`, because
+    `shared/curve.js` takes the scale arithmetic and deliberately not the element. Naming the
+    module rather than mapping the package prefix is what keeps that deliberate — a prefix
+    would quietly permit importing the element too (ADR-024).
     """
     body = client.get(f"/experiments/{name}/").text
     targets = re.findall(r'"(/vendor/fenix-spoon/[^"]+)"', body)
@@ -471,6 +480,36 @@ def test_the_italian_lesson_is_a_translation_and_not_a_copy(client, name):
         assert source["heading"] != translated["heading"], source["id"]
         for before, after in zip(source.get("body", []), translated.get("body", []), strict=True):
             assert before != after, f"{name}/{source['id']} is still in English"
+
+
+def test_the_image_vendors_the_same_widgets_the_script_does():
+    """The two places the widget set is named must name the same set.
+
+    `scripts/fetch-widgets.sh` builds and copies the packages for a `pip install -e .`
+    checkout; the Dockerfile's own `COPY --from=widgets` lines do it for the image. Neither
+    can be derived from the other — one is a shell loop, the other is a list of layers — so a
+    package added to one and not the other gives a container whose import map resolves to a
+    404 while the developer's machine is fine.
+
+    That is the ADR-007 failure with the pin swapped for a package, and it has the same
+    symptom: nothing happens, and nothing says why. `@fenix-spoon/plot` was the fourth entry
+    and the first one to be added since this pair existed, which is why this check exists now
+    rather than earlier.
+    """
+    root = Path(__file__).resolve().parent.parent
+    script = (root / "scripts" / "fetch-widgets.sh").read_text()
+    dockerfile = (root / "Dockerfile").read_text()
+
+    loop = re.search(r"for package in ([^;]+); do", script)
+    assert loop, "fetch-widgets.sh no longer loops over a package list"
+    from_script = set(loop.group(1).split())
+
+    from_image = set(
+        re.findall(r"COPY --from=widgets /src/client/packages/(\S+)/dist/", dockerfile)
+    )
+    assert from_script == from_image, (
+        f"the script vendors {sorted(from_script)} and the image vendors {sorted(from_image)}"
+    )
 
 
 def test_the_vendored_widgets_record_their_source_commit():

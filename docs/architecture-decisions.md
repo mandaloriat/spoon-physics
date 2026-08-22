@@ -296,19 +296,27 @@ than merely tedious.
 
 ## ADR-008 — The browser widgets are built from source, not installed
 
-**Decision.** `@fenix-spoon/{client,geometry-2d,viewer}` are built from the pinned Fenix
+**Decision.** `@fenix-spoon/{client,geometry-2d,viewer,plot}` are built from the pinned Fenix
 Spoon checkout and vendored into `frontend/vendor/`, which is generated and gitignored.
 
 **Why.** They are not published to npm — upstream says so, and `npm view` confirms it. The
 alternatives were to commit someone else's build output (thousands of lines to review on
 every bump, and no provenance), or to add Fenix Spoon as a git submodule (a second checkout
-to keep in step, for three ES modules). Building from the pin at image-build time keeps the
+to keep in step, for a handful of ES modules). Building from the pin at image-build time keeps the
 bytes reproducible and their origin explicit: the vendor directory carries a `COMMIT` file,
 and `check-pins.sh` reads it.
 
 **Cost.** A build step. `./scripts/fetch-widgets.sh` for a local checkout; a Node stage in
 the Dockerfile otherwise. A checkout that skips it serves a page that does nothing, which
 is why both a Python test and the page itself detect and report it.
+And a *list*, in two places that cannot be derived from one another: the script's loop and the
+Dockerfile's `COPY --from=widgets` lines. `plot` was the first package added since both existed,
+and adding it to one and not the other would have given a container whose import map resolves to
+a 404 while the developer's machine was fine — the same shape as
+[ADR-007](#adr-007--the-dependency-is-pinned-to-a-commit-in-four-places-checked-by-a-script)'s
+partial bump. `test_the_image_vendors_the_same_widgets_the_script_does` compares them, and
+[ADR-024](#adr-024--the-lab-takes-fenix-spoons-axis-arithmetic-and-keeps-its-own-renderer) is why
+`plot` is on the list at all.
 
 ---
 
@@ -1233,6 +1241,70 @@ could take three dimensions in one change rather than in a WebGL project.
 **What this does not do.** It does not make the heat sink a 3-D exercise. The challenge is still
 fin count, the sweep is still the headline, and the solid is the second question a visitor asks
 once the first has an answer.
+
+
+---
+
+## ADR-024 — The lab takes Fenix Spoon's axis arithmetic, and keeps its own renderer
+
+**Decision.** `shared/curve.js` stays, and imports `@fenix-spoon/plot/scale.js`. The
+`<fs-plot>` element is vendored and not used. The import map names the **module**, not the
+package, so the element cannot be reached by accident.
+
+**What changed upstream.** `curve.js` opened by saying the protocol had no result kind for a
+curve, filed as [fenix-spoon#69](https://github.com/mandaloriat/fenix-spoon/issues/69), and that
+the lab therefore drew its own. Protocol 1.5 closed that: `series1d` is on the wire, and
+`@fenix-spoon/plot` now draws it, with per-trace abscissae, log axes, a hover readout and a
+canvas that describes itself to a screen reader. On the face of it that is a file to delete.
+
+**Why it is not.** Every plot in this lab carries a **reference mark**, and on three of the four
+pages the mark is the didactic point rather than a decoration:
+
+| Page | Mark | What it is |
+|---|---|---|
+| heat sink | vertical, labelled *best* | the optimum fin count — the answer the sweep exists to show |
+| bridge | horizontal at 1, labelled *capacity* | the line a member fails above |
+| magnetic circuit | two verticals | where `A_z` turns over: the edges of the flux bundle, which is what leakage is measured against |
+| aerofoil | horizontal at 0 | the `C_p` zero line |
+
+`<fs-plot>` has no annotation of any kind — not a rule, not a band, not a label — and it has no
+public projection to place one with. It paints to a `<canvas>` and keeps its scales private, so
+an overlay would mean reproducing the element's layout arithmetic (its padding, its
+`padDomain` fraction, its inverted-y convention) from the outside, and re-deriving it on every
+upstream bump. That is a coupling to private internals, and it would fail silently — a mark
+half a cell off is a mark nobody notices is wrong.
+
+The lab has done the equivalent before and it worked, once: `workspace.js` projects its own
+annotations over `<fs-viewer>`. What makes that sound and this unsound is that the viewer's
+mapping is a documented linear map onto the element's own box, stated in its source and
+depended on deliberately. The plot's is neither documented nor stable.
+
+**So the split is by what is safe to depend on.** `scale.js` is pure, public, has no imports of
+its own and is tested upstream: extents, padding that means the same thing on a log axis as on a
+linear one, round ticks, and the data-to-pixel map. That is precisely where the interesting
+mistakes in a plot live, and this repository had its own second copy of all of it —
+`niceRange`, `ticks`, `format`, two projection closures. Those are deleted. What is left in
+`curve.js` is the renderer, the marks and the legend, which is the part upstream does not offer.
+
+**What it costs, and one thing it buys back.** The axis ranges moved: the old code snapped the
+domain outward to a round step, the new one pads it by a twentieth and puts round numbers
+*inside*. Every plot on the site is therefore drawn slightly differently than before — checked
+by eye rather than asserted, because "the axis looks right" is not a property a test has. What
+it buys back is that the lab's SVG plots and any future `<fs-plot>` now agree on where a value
+lands, because they are running the same three functions.
+
+**What would make the element win.** A `marks` property, or any public projection. Either turns
+this from a decision into a deletion, and the migration is then the seven call sites and this
+record. Worth raising upstream with the table above attached — the same sequence
+[ADR-018](#adr-018--the-magnetics-exercise-gets-its-own-solver-and-its-challenge-is-not-a-gap-force)
+followed: build where the benchmark is, offer afterwards with evidence.
+
+**A fifth place the widget set is named, found while doing this.** `scripts/fetch-widgets.sh`
+loops over the packages; the Dockerfile has its own `COPY --from=widgets` lines. Adding
+`plot` to one and not the other gives a container whose import map resolves to a 404 while the
+developer's machine is fine — the [ADR-007](#adr-007--the-dependency-is-pinned-to-a-commit-in-four-places-checked-by-a-script)
+failure with a package in place of the pin, and the same symptom: nothing happens, and nothing
+says why. `test_the_image_vendors_the_same_widgets_the_script_does` now compares the two lists.
 
 
 ---

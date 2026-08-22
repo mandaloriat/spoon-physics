@@ -63,6 +63,7 @@ COPY frontend/ /app/frontend/
 COPY --from=widgets /src/client/packages/client/dist/ /app/frontend/vendor/fenix-spoon/client/
 COPY --from=widgets /src/client/packages/geometry-2d/dist/ /app/frontend/vendor/fenix-spoon/geometry-2d/
 COPY --from=widgets /src/client/packages/viewer/dist/ /app/frontend/vendor/fenix-spoon/viewer/
+COPY --from=widgets /src/client/packages/plot/dist/ /app/frontend/vendor/fenix-spoon/plot/
 RUN printf '%s\n' "${FENIX_SPOON_COMMIT}" > /app/frontend/vendor/fenix-spoon/COMMIT
 
 # `--no-deps` on purpose. The base image already installs `fenixspoon` from this exact
