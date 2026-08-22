@@ -37,13 +37,13 @@ fi
 git -C "$WORK_DIR" fetch --quiet --depth 1 origin "$FENIX_SPOON_COMMIT"
 git -C "$WORK_DIR" checkout --quiet FETCH_HEAD
 
-echo "==> building @fenix-spoon/{client,geometry-2d,viewer}"
+echo "==> building @fenix-spoon/{client,geometry-2d,viewer,plot}"
 npm --prefix "$WORK_DIR/client" ci
 npm --prefix "$WORK_DIR/client" run build
 
 echo "==> vendoring into frontend/vendor/fenix-spoon"
 rm -rf "$VENDOR_DIR"
-for package in client geometry-2d viewer; do
+for package in client geometry-2d viewer plot; do
   mkdir -p "$VENDOR_DIR/$package"
   cp -R "$WORK_DIR/client/packages/$package/dist/." "$VENDOR_DIR/$package/"
 done

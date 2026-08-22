@@ -34,15 +34,19 @@
   }, 2000);
 })();
 </script>
-<!-- Two packages, as on the solenoid and for the same reason: `<fs-geometry-2d>` edits a
-     `domain2d` outline, and this profile is a set of filled rectangles described by the
-     quantities an engineer would name — base, fin count, fin thickness, fin height. Those are
-     the controls, and the section is drawn from them. See ADR-009 and ADR-012. -->
+<!-- No geometry editor here, as on the solenoid and for the same reason:
+     `<fs-geometry-2d>` edits a `domain2d` outline, and this profile is a set of filled
+     rectangles described by the quantities an engineer would name — base, fin count, fin
+     thickness, fin height. Those are the controls, and the section is drawn from them. The
+     last entry is a *module* rather than a package: `shared/curve.js` takes
+     `@fenix-spoon/plot`'s axis arithmetic and not its element (ADR-024). See ADR-009 and
+     ADR-012. -->
 <script type="importmap">
 {
   "imports": {
     "@fenix-spoon/client": "/vendor/fenix-spoon/client/index.js",
-    "@fenix-spoon/viewer": "/vendor/fenix-spoon/viewer/index.js"
+    "@fenix-spoon/viewer": "/vendor/fenix-spoon/viewer/index.js",
+    "@fenix-spoon/plot/scale.js": "/vendor/fenix-spoon/plot/scale.js"
   }
 }
 </script>
