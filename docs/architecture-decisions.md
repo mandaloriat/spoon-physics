@@ -1019,6 +1019,17 @@ same argument that makes the homepage thumbnails real solves rather than illustr
 caught a real error immediately: the first flow diagram ran its streamlines straight *through*
 the section, which is the precise opposite of what the chapter beside it explains.
 
+**And generated geometry does not make a drawing right**, which the same two diagrams then
+proved twice. The flow figure tilted its *frame* and left the section flat inside it, so the
+streamlines carried the stream's slope and the shape did not: the pair that should have hugged
+the two surfaces ran an eighth of a chord above the back of the section and out through its
+tail — the very failure the paragraph above says was caught. It now tilts the geometry instead
+and reads the streamlines off the tilted surfaces, so the picture has one frame and cannot
+disagree with itself. The slice figure had the other half of that failure, a drawing that was
+self-consistent and still said the wrong thing: it cut the wing with a plane laid *along* the
+span, which is a plane no section falls out of. A slice is taken across the span, and the figure
+now takes it there. Both are pictures, and a picture is checked by looking at it.
+
 **A preset is a click, so it may solve.** The last chapter offers six incidences, and each one
 sets the control and presses Run.
 [ADR-010](#adr-010--public-demo-limits-and-what-they-do-not-cover) forbids solving on load and

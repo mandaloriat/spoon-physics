@@ -2224,18 +2224,19 @@ input:focus-visible {
   vector-effect: non-scaling-stroke;
 }
 
-.figure__wing-edge {
-  stroke: var(--ink-soft);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-  fill: none;
-}
-
 .figure__plane {
   fill: color-mix(in srgb, var(--spark) 22%, transparent);
   stroke: var(--spark);
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
+}
+
+/* Where the cutting plane meets the wing: nose to tail, at one station along the span. */
+.figure__cut {
+  stroke: var(--spark);
+  stroke-width: 2.4;
+  vector-effect: non-scaling-stroke;
+  fill: none;
 }
 
 .figure__arrow {
