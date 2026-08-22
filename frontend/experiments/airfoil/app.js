@@ -672,10 +672,16 @@ function runPreset(alphaDeg) {
 /**
  * The engineering answer travels as a declared artifact, not in the result envelope.
  *
- * Protocol 1.2 has nowhere to put a computed metric, a warning or a curve — `stats` is
- * `dict[str, float]` and means what the solve cost. Upstream's issue #46 is the one that gives
- * the envelope somewhere for this; until it lands, `report.json` is the honest carrier and its
- * content is exactly the payload that becomes native metrics later. ADR-015.
+ * **Not because the envelope cannot carry it.** It can, and has been able to since the
+ * `4e7c296` pin: upstream's #46 landed, `metrics` is computed and returned, 1.3 put `residual`
+ * and `warnings` under `diagnostics`, and 1.5 added `series`. `lab.heatsink2d` reads exactly
+ * that and writes no artifact at all. This page has not been moved across yet — see
+ * [ADR-015](../../../docs/architecture-decisions.md#adr-015--the-run-table-lives-in-the-browser-and-fenix-spoon-owns-the-record),
+ * which used to say the move was waiting on upstream and now says it is waiting on us.
+ *
+ * The comment here previously claimed the envelope had nowhere to put a metric "until #46
+ * lands". It had landed. What stays true is that `stats` is `dict[str, float]` and
+ * means what the solve *cost*, so the surface `C_p` was never going to live there.
  */
 async function fetchReport(result) {
   const artifact = (result.artifacts ?? []).find((entry) => entry.name === 'report.json');

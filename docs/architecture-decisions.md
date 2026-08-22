@@ -309,6 +309,7 @@ and `check-pins.sh` reads it.
 **Cost.** A build step. `./scripts/fetch-widgets.sh` for a local checkout; a Node stage in
 the Dockerfile otherwise. A checkout that skips it serves a page that does nothing, which
 is why both a Python test and the page itself detect and report it.
+
 And a *list*, in two places that cannot be derived from one another: the script's loop and the
 Dockerfile's `COPY --from=widgets` lines. `plot` was the first package added since both existed,
 and adding it to one and not the other would have given a container whose import map resolves to
@@ -588,14 +589,33 @@ and convergence ladders (#48). A second implementation here would be a parallel 
 migrate off, and it would be the *wrong* half — the lab would own persistence, which it has no
 business owning, while still lacking the typed metrics that make a row comparable.
 
-**What that costs today.** Protocol 1.2's result envelope has nowhere to put a computed
-metric, a warning, or a 1-D curve. So a lab solver returns the field as `grid2d`/`mesh2d`,
-restricts `stats` to what the solve cost, and writes one always-present `report.json`
-artifact carrying metrics, curves, verification residuals and warnings — declared as an
-`ArtifactSpec` so it is discoverable before submitting. It is protocol-legal, it invents no
-private convention on top of `stats`, and its content is exactly the payload that becomes
-native `metrics` when #46 lands: at that point the page reads the envelope and the artifact
-becomes optional.
+**What that cost, and what it costs now.** This is the part of the record that expired, and it
+is corrected here rather than left standing.
+
+It used to read: protocol 1.2's envelope has nowhere to put a computed metric, a warning or a
+1-D curve, so a lab solver returns the field, restricts `stats` to what the solve cost, and
+writes one always-present `report.json` artifact carrying metrics, curves, residuals and
+warnings — declared as an `ArtifactSpec` so it is discoverable before submitting — and *at that
+point the page reads the envelope and the artifact becomes optional*.
+
+**That point arrived, and nobody came back to this record.** #46 landed: `SolverResult` carries
+`metrics`, `fill_declared_metrics` computes any metric whose spec names a `field` and a
+`reduction`, 1.3 added `residual` and `warnings` under `diagnostics`, and 1.5 added `series`.
+All four were already true at the `4e7c296` pin, which is to say for the whole life of the
+bridge and of the heat sink. `lab.heatsink2d` is the worked example and the only page that took
+the hint: it writes no artifact, the envelope carries everything, and `buildReport` on that page
+is a view over the result with no second round trip.
+
+**What is still true is smaller, and worth stating exactly.** Three exercises — the aerofoil,
+the magnetic circuit and the bridge — still declare and fetch `report.json`, and three page
+comments still said they did so "until #46 lands"; those comments now say what is actually the
+case. The artifact is not wrong to *work*, and it is still the right carrier for what does not
+belong in an envelope. Moving the metrics out of it is three solvers and three pages, it changes
+what a saved run row is built from, and it is deliberately not done in the change that corrected
+this paragraph. It is the next piece of work here, and the heat sink is the shape to copy.
+
+The rest of this decision is unaffected: where the run *table* lives was never an argument about
+where a metric travels.
 
 **Cost.** Runs are lost when the visitor clears their browser, and cannot be shared by URL.
 For an anonymous public demo that is the honest state of affairs rather than a limitation to
