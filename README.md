@@ -401,6 +401,26 @@ The data volume is untouched by either, so finished jobs survive a rollback. Rol
 across a Fenix Spoon pin bump also reverts the base image, since the tag is a build
 argument.
 
+### 7. Deploy on a timer
+
+`scripts/auto-deploy.sh` is the unattended version of step 3: it fetches, and when
+`origin/main` has moved ahead of the checkout it runs `deploy.sh` for you. In cron:
+
+```cron
+*/15 * * * * /home/deploy/apps/physics-lab/scripts/auto-deploy.sh >> /home/deploy/apps/physics-lab/.auto-deploy/auto-deploy.log 2>&1
+```
+
+It deploys only a clean fast-forward of `main`. A checkout that is dirty, detached, ahead
+of the remote or diverged from it means someone is working on the box by hand, and the
+script says so in the log and does nothing. When a deploy fails its smoke test it puts the
+previously serving revision back — `deploy.sh` has already started the broken one by the
+time the smoke test speaks — and records the failed revision in `.auto-deploy/`, so the
+next tick waits for a newer commit instead of rebuilding the same failure every quarter of
+an hour. `--force` retries a revision that failed; deleting
+`.auto-deploy/failed-revision` does the same.
+
+Nothing about this is required: a box without the cron entry behaves exactly as before.
+
 ---
 
 ## Operating it
