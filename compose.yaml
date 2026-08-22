@@ -19,13 +19,13 @@ services:
     build:
       context: .
       args:
-        FENIX_SPOON_COMMIT: ${FENIX_SPOON_COMMIT:-4e7c296a7d351575194e25a1d4ebc1c703a6e08f}
-        FENIX_SPOON_IMAGE: ${FENIX_SPOON_IMAGE:-ghcr.io/mandaloriat/fenix-spoon:sha-4e7c296-slim}
+        FENIX_SPOON_COMMIT: ${FENIX_SPOON_COMMIT:-3d483a38d619b3b6c2d88e798ca0be5420d5ef6d}
+        FENIX_SPOON_IMAGE: ${FENIX_SPOON_IMAGE:-ghcr.io/mandaloriat/fenix-spoon:sha-3d483a3-slim}
     image: ${LAB_IMAGE:-physics-lab:dev}
     restart: unless-stopped
     environment:
       # --- what this deployment is, reported by /health
-      FENIX_SPOON_COMMIT: ${FENIX_SPOON_COMMIT:-4e7c296a7d351575194e25a1d4ebc1c703a6e08f}
+      FENIX_SPOON_COMMIT: ${FENIX_SPOON_COMMIT:-3d483a38d619b3b6c2d88e798ca0be5420d5ef6d}
       PHYSICS_LAB_JOBS_ENABLED: ${PHYSICS_LAB_JOBS_ENABLED:-true}
 
       # --- Fenix Spoon: persistence

@@ -991,6 +991,13 @@ fs-geometry-2d {
   gap: 0.25rem;
 }
 
+/* `display: grid` above beats the `hidden` attribute, so the attribute needs saying again —
+   the same explicit rule `.workspace__scale` and `.workspace__readout` already carry. Without
+   it the cutting-plane panel is on the page before there is a solid to cut. */
+.workspace__field[hidden] {
+  display: none;
+}
+
 .workspace__fieldpick {
   display: flex;
   align-items: center;

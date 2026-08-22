@@ -82,6 +82,8 @@ export default {
   /* ---------------------------------------------------------------- the shared page shell */
 
   experiment: {
+    sliceFailed: 'The server could not cut that plane (HTTP {status}).',
+    sliceMismatch: 'Two cuts of the same plane came back on different grids, so neither is drawn.',
     pageTitle: '{title} — Spoon Physics',
     notSet: 'not set',
     submitting: 'Submitting…',
@@ -1114,6 +1116,32 @@ export default {
       'A physics challenge: keep a 30 W device cool on a mass budget, and find the fin count where adding more starts making it worse. Predict where the optimum sits before you compute it.',
     eyebrow: 'Surface, the gap the air moves through, and mass',
     heading: 'How many fins do you actually need?',
+    planeLabel: 'Cut',
+    planeAria: 'Cutting plane through the solid',
+    planePosition: 'Where',
+    planePositionTitle: 'Where along the normal the plane sits.',
+    plane: {
+      z: 'Across it — the cross-section',
+      y: 'Through the base — where the spreading is',
+      x: 'Along a fin',
+    },
+    planeNote: {
+      z: 'A cross-section at {position} mm along the length. This is the picture the section solver draws, and away from the device it is not the same one.',
+      y: 'A cut through the metal at {position} mm above the base. The gradient along the length is the spreading resistance, seen directly.',
+      x: 'A cut at {position} mm across the base, looking along the extrusion.',
+    },
+    modelHeading: 'Section or solid',
+    modelLead:
+      'The cross-section is exact for an extrusion and assumes the device heats it evenly along its whole length. Solve the body instead and the device can be shorter than the sink — which costs a spreading resistance, and gains two cut ends.',
+    modelPick: 'What is solved',
+    model: {
+      section: 'The cross-section',
+      solid: 'The whole body',
+      sectionNote:
+        'The device is taken to heat the base evenly along the whole length. Exact for the conduction, and the assumption a real device breaks.',
+      solidNote:
+        'The device covers {covered}% of the length. The rest of the base has to reach its fins sideways, and the two cut ends are surface the section never had.',
+    },
     schematicTitle: 'Heat sink cross-section: a finned base with the device footprint underneath',
     legendMetal: 'aluminium',
     legendAir: 'air',
@@ -1168,6 +1196,12 @@ export default {
         'Still air, or a fan along the extrusion. The best fin count is not the same one.',
       velocity: 'Air speed',
       velocityTitle: 'Face velocity along the channels.',
+      depth: 'Extrusion length',
+      depthTitle:
+        'How long a piece of the extrusion this is. It has always been part of the answer — every watt and every gram is per unit depth multiplied by it — and where it travels depends on what is being solved.',
+      footprintDepth: 'Device length',
+      footprintDepthTitle:
+        'How much of that length the device actually touches. The section solver has nowhere to put this number; the solid one is built around it.',
       flush: 'Mounted flush',
       flushHint:
         'With the underside blocked by the mounting, it loses nothing. Unticked, the base cools from below as well.',
@@ -1203,6 +1237,11 @@ export default {
       viewFactor: 'View factor to room',
       h: 'Convection coefficient',
       flux: 'Peak conductive flux',
+      extruded: 'Resistance, extruded model',
+      spreading: 'Spreading resistance',
+      endGain: 'What the two ends give back',
+      endLoss: 'Heat out through the ends',
+      needsSolid: 'needs the whole body',
     },
     checks: {
       energy: 'Energy balance',
@@ -1223,6 +1262,7 @@ export default {
       mass: 'mass kg',
       radiative: 'rad. share',
       energy: 'energy',
+      depthCorrection: '3-D correction',
     },
     shapeLabel: '{fins} fins · {height} mm tall · {thickness} mm thick · {base} mm base',
     plots: {

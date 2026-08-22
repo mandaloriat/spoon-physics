@@ -41,7 +41,7 @@ stays in the model details. See [ADR-022](docs/architecture-decisions.md#adr-022
 |---|---|---|
 | **Find the wing's attitude** — *aerodynamics* | Ideal flow with a Kutta condition, by a panel method: hit a lift target without twisting too hard | **Available** — the first page built to the *exercise* contract |
 | **Build a bridge that holds** — *statics* | A pin-jointed lattice by the direct stiffness method: build a truss across a gorge and carry the traffic on a steel budget, without buckling a member | **Available** — the one you draw |
-| **How many fins do you actually need?** — *heat transfer* | Conduction in a finned extrusion with convection and radiation at the surfaces: an optimum that is not "more" | **Available** |
+| **How many fins do you actually need?** — *heat transfer* | Conduction in a finned extrusion with convection and radiation at the surfaces: an optimum that is not "more". Solvable on the cross-section or, since protocol 1.17, on the whole body | **Available** |
 | **Magnetic field in a 2D section** — *magnetostatics* | Vector potential for an out-of-plane current, on a grid fitted to the iron: carry a required flux on an ampere-turn budget without leaking it | **Advanced lab.** Written for readers who already know flux and magnetic circuits. Not a challenge: its mission is a flux in Wb/m, which has no outcome a student can picture. The electromagnet meant to replace it — pull a plate on a power budget — is specified and unbuilt |
 
 Each page also numbers *itself* — "Exercise 1", "Exercise 3", "Exercise 4" — and that number is its
@@ -66,19 +66,34 @@ to, the lattice travels as a parameter, and what the bridge is asked to carry tr
 load case. The gap is recorded as a finding rather than papered over:
 [ADR-019](docs/architecture-decisions.md#adr-019--the-bridge-carries-its-lattice-in-params-because-the-protocol-has-no-network-geometry).
 
+The heat sink exercises the half that did not exist until recently: **a body with a length**
+(protocol 1.17). Its cross-section solver is exact for an extrusion and assumes the device heats
+it evenly along the whole of it — which a 30 mm die on a 60 mm extrusion does not. So the page
+also offers `lab.heatsink3d`, which takes `regions3d`, reads the length off the geometry instead
+of out of a parameter, and reports the **spreading resistance** that assumption was hiding, the
+two cut ends that pay part of it back, and the plane model's own answer beside them. What comes
+back is a `mesh3d`, and the page draws it by asking for a `slice` — a `grid2d`, which the viewer
+has drawn since 1.0, so three dimensions cost the browser nothing
+([ADR-023](docs/architecture-decisions.md#adr-023--the-heat-sink-gets-a-third-dimension-and-what-it-buys-is-the-spreading-resistance)).
+
 The remaining experiment has its preview solver upstream already; what it needs is the
 didactic work. The homepage lists it as planned rather than pretending otherwise.
 
-Three of the lab's solvers are its own, in `physics_lab/solvers/`, and in each case the reason
+Five of the lab's solvers are its own, in `physics_lab/solvers/`, and in each case the reason
 was physics a metric needed rather than a wish to demonstrate the adapter contract: upstream's
 potential-flow adapters impose no Kutta condition, so their lift is exactly zero
 ([ADR-014](docs/architecture-decisions.md#adr-014--the-airfoil-exercise-ships-ideal-flow-with-a-kutta-condition-first));
 upstream's magnetostatics adapter rasterises the iron/air interface onto a uniform grid, so
 a 20.000 mm core comes out 20.339 mm wide at one resolution and 20.084 mm at another
 ([ADR-018](docs/architecture-decisions.md#adr-018--the-magnetics-exercise-gets-its-own-solver-and-its-challenge-is-not-a-gap-force));
-and upstream's elasticity adapters solve a *continuum*, which has no members to report a force
+upstream's elasticity adapters solve a *continuum*, which has no members to report a force
 in — a truss is a graph, not a body meshed finely
-([ADR-019](docs/architecture-decisions.md#adr-019--the-bridge-carries-its-lattice-in-params-because-the-protocol-has-no-network-geometry)).
+([ADR-019](docs/architecture-decisions.md#adr-019--the-bridge-carries-its-lattice-in-params-because-the-protocol-has-no-network-geometry));
+and upstream's two conduction adapters declare `no_radiation`, whose own assumption text calls
+radiation *"not negligible for a hot surface in still air"* — which is the heat sink's nominal
+case. That last reason holds in three dimensions as well as two, which is why the heat sink is
+the one exercise with two adapters rather than one
+([ADR-023](docs/architecture-decisions.md#adr-023--the-heat-sink-gets-a-third-dimension-and-what-it-buys-is-the-spreading-resistance)).
 
 ### Exercises, not demonstrations
 
@@ -280,7 +295,7 @@ The FEniCSx solvers register only where dolfinx imports, which means the full im
 docker compose \
   --env-file .env \
   -f compose.yaml -f compose.override.yaml \
-  build --build-arg FENIX_SPOON_IMAGE=ghcr.io/mandaloriat/fenix-spoon:sha-4e7c296
+  build --build-arg FENIX_SPOON_IMAGE=ghcr.io/mandaloriat/fenix-spoon:sha-3d483a3
 docker compose up -d
 ```
 
@@ -485,15 +500,16 @@ pytest && npx playwright test
 
 | What | Value |
 |---|---|
-| Fenix Spoon commit | `4e7c296a7d351575194e25a1d4ebc1c703a6e08f` |
-| FEniCSx base image | `ghcr.io/mandaloriat/fenix-spoon:sha-4e7c296` — digest `sha256:08213ca65c5249d792837cbca82d5e0d6ba1fec2a036afec0192fddf2f7bedeb` |
-| Mock-only base image | `ghcr.io/mandaloriat/fenix-spoon:sha-4e7c296-slim` — digest `sha256:8189808c5797c61596d79a89f01857128ed2fa2b7b5d3ab141acaf36a37d5208` |
+| Fenix Spoon commit | `3d483a38d619b3b6c2d88e798ca0be5420d5ef6d` |
+| FEniCSx base image | `ghcr.io/mandaloriat/fenix-spoon:sha-3d483a3` — digest `sha256:58b368b7d64399a2070e72429db5f837bc03f0bb3a40dac4c13a24c01f05a07c` |
+| Mock-only base image | `ghcr.io/mandaloriat/fenix-spoon:sha-3d483a3-slim` — digest `sha256:515834de44a656e345d57a9923517334ed3764e630ee10b44b86c7c90e2f61e6` |
 | dolfinx | v0.11.0 |
 
-Upstream has published **no release and no git tag**, so a commit SHA is the strongest pin
-available. Note that `:latest` and `:latest-slim` **do not exist** in GHCR despite what the
-Fenix Spoon README says — its publish workflow tags `latest` only on a `v*` git tag, and
-none has been pushed. Do not "fix" a pull failure by switching to them.
+Upstream tagged **v0.1.0** on 2026-08-06, and the pin is still a commit: the tag points at
+`b556e4a`, three commits before `regions3d` exists, so pinning to the release would pin away
+the 3-D geometry the heat sink now sends (ADR-007). `:latest` and `:latest-slim` exist in GHCR
+from that tag onwards — earlier revisions of this file said they did not — but they point at
+the release, not at this commit. Do not "fix" a pull failure by switching to them.
 
 `/health` reports the pin at runtime, so a deployed container can be asked what it is made
 of rather than identified by a tag someone may have retagged.
