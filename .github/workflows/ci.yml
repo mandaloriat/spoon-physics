@@ -17,7 +17,7 @@ env:
   # which is exactly the silent skew ADR-007 exists to prevent: the image stage would build
   # the widgets from the new commit onto a runtime whose `fenixspoon` was the old one, and the
   # first symptom was an ImportError three minutes into a Docker build.
-  FENIX_SPOON_SLIM_IMAGE: ghcr.io/mandaloriat/fenix-spoon:sha-4e7c296-slim
+  FENIX_SPOON_SLIM_IMAGE: ghcr.io/mandaloriat/fenix-spoon:sha-3d483a3-slim
 
 jobs:
   # ────────────────────────────────────────────────────────────────── static checks

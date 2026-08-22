@@ -14,7 +14,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Keep this default in step with pyproject.toml and .env.example — scripts/check-pins.sh
 # fails the build when they drift apart.
-FENIX_SPOON_COMMIT="${FENIX_SPOON_COMMIT:-4e7c296a7d351575194e25a1d4ebc1c703a6e08f}"
+FENIX_SPOON_COMMIT="${FENIX_SPOON_COMMIT:-3d483a38d619b3b6c2d88e798ca0be5420d5ef6d}"
 FENIX_SPOON_REPO="${FENIX_SPOON_REPO:-https://github.com/mandaloriat/fenix-spoon.git}"
 
 VENDOR_DIR="$REPO_ROOT/frontend/vendor/fenix-spoon"

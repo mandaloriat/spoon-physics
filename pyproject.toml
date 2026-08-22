@@ -10,12 +10,13 @@ readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
 dependencies = [
-    # Pinned to a commit, not a branch. Fenix Spoon has published no release and no tag
-    # (checked: `git ls-remote --tags` is empty), so a SHA is the strongest pin
-    # available — see docs/architecture-decisions.md, ADR-007, for the upgrade procedure.
+    # Pinned to a commit, not a branch and not the tag. Upstream cut v0.1.0, but it points
+    # three commits before `regions3d` exists — so the release would pin away the 3-D geometry
+    # the heat sink sends. See docs/architecture-decisions.md, ADR-007, for that and for the
+    # upgrade procedure.
     # This SHA must match FENIX_SPOON_COMMIT everywhere else in the repository;
     # scripts/check-pins.sh fails CI when it does not.
-    "fenixspoon @ git+https://github.com/mandaloriat/fenix-spoon@4e7c296a7d351575194e25a1d4ebc1c703a6e08f#subdirectory=server",
+    "fenixspoon @ git+https://github.com/mandaloriat/fenix-spoon@3d483a38d619b3b6c2d88e798ca0be5420d5ef6d#subdirectory=server",
 ]
 
 [project.optional-dependencies]

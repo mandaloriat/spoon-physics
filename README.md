@@ -280,7 +280,7 @@ The FEniCSx solvers register only where dolfinx imports, which means the full im
 docker compose \
   --env-file .env \
   -f compose.yaml -f compose.override.yaml \
-  build --build-arg FENIX_SPOON_IMAGE=ghcr.io/mandaloriat/fenix-spoon:sha-4e7c296
+  build --build-arg FENIX_SPOON_IMAGE=ghcr.io/mandaloriat/fenix-spoon:sha-3d483a3
 docker compose up -d
 ```
 
@@ -485,15 +485,16 @@ pytest && npx playwright test
 
 | What | Value |
 |---|---|
-| Fenix Spoon commit | `4e7c296a7d351575194e25a1d4ebc1c703a6e08f` |
-| FEniCSx base image | `ghcr.io/mandaloriat/fenix-spoon:sha-4e7c296` — digest `sha256:08213ca65c5249d792837cbca82d5e0d6ba1fec2a036afec0192fddf2f7bedeb` |
-| Mock-only base image | `ghcr.io/mandaloriat/fenix-spoon:sha-4e7c296-slim` — digest `sha256:8189808c5797c61596d79a89f01857128ed2fa2b7b5d3ab141acaf36a37d5208` |
+| Fenix Spoon commit | `3d483a38d619b3b6c2d88e798ca0be5420d5ef6d` |
+| FEniCSx base image | `ghcr.io/mandaloriat/fenix-spoon:sha-3d483a3` — digest `sha256:58b368b7d64399a2070e72429db5f837bc03f0bb3a40dac4c13a24c01f05a07c` |
+| Mock-only base image | `ghcr.io/mandaloriat/fenix-spoon:sha-3d483a3-slim` — digest `sha256:515834de44a656e345d57a9923517334ed3764e630ee10b44b86c7c90e2f61e6` |
 | dolfinx | v0.11.0 |
 
-Upstream has published **no release and no git tag**, so a commit SHA is the strongest pin
-available. Note that `:latest` and `:latest-slim` **do not exist** in GHCR despite what the
-Fenix Spoon README says — its publish workflow tags `latest` only on a `v*` git tag, and
-none has been pushed. Do not "fix" a pull failure by switching to them.
+Upstream tagged **v0.1.0** on 2026-08-06, and the pin is still a commit: the tag points at
+`b556e4a`, three commits before `regions3d` exists, so pinning to the release would pin away
+the 3-D geometry the heat sink now sends (ADR-007). `:latest` and `:latest-slim` exist in GHCR
+from that tag onwards — earlier revisions of this file said they did not — but they point at
+the release, not at this commit. Do not "fix" a pull failure by switching to them.
 
 `/health` reports the pin at runtime, so a deployed container can be asked what it is made
 of rather than identified by a tag someone may have retagged.
