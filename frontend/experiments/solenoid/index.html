@@ -35,11 +35,13 @@
 })();
 </script>
 <!-- The Fenix Spoon browser packages, vendored from the pinned commit by
-     scripts/fetch-widgets.sh (or by the Docker build's node stage). Two packages here, not
-     three: this experiment's geometry is a set of material regions, and `<fs-geometry-2d>`
-     produces `domain2d` — one polygon cut out of a rectangle — so it has nothing to edit
-     here. The cross-section is built from physical sliders instead, and drawn as its own
-     diagram. See docs/architecture-decisions.md, ADR-009 and ADR-012. -->
+     scripts/fetch-widgets.sh (or by the Docker build's node stage). No geometry editor here:
+     this experiment's geometry is a set of material regions, and `<fs-geometry-2d>` produces
+     `domain2d` — one polygon cut out of a rectangle — so it has nothing to edit. The
+     cross-section is built from physical sliders instead, and drawn as its own diagram. The
+     last entry is a *module* rather than a package: `shared/curve.js` takes
+     `@fenix-spoon/plot`'s axis arithmetic and not its element (ADR-024). See
+     docs/architecture-decisions.md, ADR-009 and ADR-012. -->
 <script type="importmap">
 {
   "imports": {

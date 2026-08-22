@@ -264,8 +264,9 @@ def test_static_assets_the_pages_reference_are_reachable(client, path):
 def test_the_import_map_matches_what_is_vendored(client, name):
     """Every experiment's import map targets must resolve, and they need not be the same set.
 
-    The airfoil resolves four entries, the other three resolve three — none of them has a
-    geometry to edit with the editor widget. What must hold for all of them is that whatever
+    The airfoil resolves four entries and the other three resolve three, and the difference is
+    `@fenix-spoon/geometry-2d`: the airfoil is the only page with an outline to drag, so it is
+    the only one that mounts `<fs-geometry-2d>`. What must hold for all of them is that whatever
     the page declares is actually served, because a bare specifier that resolves to a 404 is a
     page that does nothing.
 

@@ -36,8 +36,13 @@
 </script>
 <!-- The Fenix Spoon browser packages, vendored from the pinned commit by
      scripts/fetch-widgets.sh (or by the Docker build's node stage). Bare specifiers are
-     resolved here rather than by a bundler: three ES modules with one shared dependency
-     do not need a build step. See docs/architecture-decisions.md, ADR-009. -->
+     resolved here rather than by a bundler: a handful of ES modules with one shared
+     dependency do not need a build step. This page resolves the most of any — it is the only
+     one with an outline to drag, so it is the only one that mounts `<fs-geometry-2d>`.
+     The last entry is a *module* and not a package on purpose: `shared/curve.js` takes
+     `@fenix-spoon/plot`'s axis arithmetic and deliberately not its element, and a package
+     prefix here would quietly permit importing the element too. See
+     docs/architecture-decisions.md, ADR-009 and ADR-024. -->
 <script type="importmap">
 {
   "imports": {
