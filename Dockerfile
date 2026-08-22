@@ -15,14 +15,15 @@
 #   docker build -t physics-lab:fenics \
 #       --build-arg FENIX_SPOON_IMAGE=ghcr.io/mandaloriat/fenix-spoon:sha-3d483a3 .
 
-# The Fenix Spoon commit this lab is built and tested against. There is no release and no
-# tag upstream (`git ls-remote --tags` is empty), so a SHA is the strongest pin available.
+# The Fenix Spoon commit this lab is built and tested against. Upstream tagged v0.1.0, and the
+# pin is still a SHA: the tag points three commits before `regions3d` exists, so pinning to the
+# release would pin away the 3-D geometry the heat sink sends. See ADR-007.
 ARG FENIX_SPOON_COMMIT=3d483a38d619b3b6c2d88e798ca0be5420d5ef6d
 
 # The server image built from that same commit. `:sha-<short>-slim` is mock solvers only;
-# `:sha-<short>` carries FEniCSx (dolfinx v0.11.0). Note that `:latest` and `:latest-slim`
-# do *not* exist in GHCR despite what the upstream README says — the publish workflow only
-# tags `latest` on a `v*` git tag, and none has been pushed.
+# `:sha-<short>` carries FEniCSx (dolfinx v0.11.0). `:latest` and `:latest-slim` exist in GHCR
+# from the v0.1.0 tag onwards — an earlier version of this comment said they did not — but they
+# point at the release, not at this commit, and are not pins either way.
 ARG FENIX_SPOON_IMAGE=ghcr.io/mandaloriat/fenix-spoon:sha-3d483a3-slim
 
 

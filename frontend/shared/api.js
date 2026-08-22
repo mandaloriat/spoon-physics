@@ -198,8 +198,9 @@ export function paramSpec(solver, name) {
  * The page's field picker, though, switches between fields on a result that is already drawn,
  * and re-cutting on every switch would put a round trip behind a `<select>`. Both cuts are the
  * same plane through the same mesh, so their grids are identical and merging them is safe —
- * asserted here rather than assumed, because a server that changed the sampling between two
- * calls would otherwise paint one field's values on the other's grid.
+ * asserted here rather than assumed, and asserted over the *whole* grid definition rather than
+ * its shape, because a server that agreed on 192x192 and disagreed on `bounds` would otherwise
+ * have one field's values painted on the other's coordinates.
  *
  * @param {string} jobId the finished job
  * @param {{fields: string[], axis: 'x'|'y'|'z', value: number, samples?: number}} plane
@@ -228,10 +229,32 @@ export async function sliceOf(jobId, { fields, axis, value, samples = 192 }) {
     ...(first.answer.data.mask ? { mask: first.answer.data.mask } : {}),
   };
   for (const { field, answer } of cuts) {
-    if (String(answer.data.shape) !== String(merged.shape)) {
-      throw new Error(t('experiment.sliceMismatch'));
-    }
+    if (!sameGrid(answer.data, merged)) throw new Error(t('experiment.sliceMismatch'));
     merged.fields[field] = answer.data.fields[field];
   }
   return { kind: 'grid2d', data: merged, plane: first.answer.plane, missed: first.answer.missed };
+}
+
+/**
+ * Do two `grid2d` payloads describe the *same* grid — all of it, not the shape alone?
+ *
+ * A grid is its cell counts, the box they cover, and which of those cells hold nothing. Two
+ * cuts of one plane through one stored mesh agree on all three, and checking only the first
+ * would leave the failure this guard exists to catch: same 192x192 on different `bounds` merges
+ * without complaint and paints one field onto the other's coordinates, which is a picture that
+ * looks right and is not.
+ *
+ * The mask is compared element by element with an early exit, because it is the one part that
+ * is an array of tens of thousands of entries and the one part a stringify would make expensive.
+ */
+function sameGrid(a, b) {
+  if (String(a.shape) !== String(b.shape)) return false;
+  if (String(a.bounds) !== String(b.bounds)) return false;
+  if (Boolean(a.mask) !== Boolean(b.mask)) return false;
+  if (!a.mask) return true;
+  if (a.mask.length !== b.mask.length) return false;
+  for (let index = 0; index < a.mask.length; index += 1) {
+    if (a.mask[index] !== b.mask[index]) return false;
+  }
+  return true;
 }
