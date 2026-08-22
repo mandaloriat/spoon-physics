@@ -4,7 +4,7 @@
   "subtitle": "Superficie, passaggio dell'aria e massa",
   "intro": "Un componente da 30 W scalda un dissipatore di alluminio. Aggiungere alette aumenta la superficie, ma restringe anche i canali dell'aria. Prima prova a prevedere dove si trova il compromesso migliore.",
   "challenge": {
-    "statement": "Tieni un componente da 30 W sotto i 95 °C in aria ferma a 25 °C, usando non più di 170 g di alluminio sui 60 mm di estrusione. Poi rendi il dissipatore il migliore possibile: il punteggio è resistenza termica per massa, quindi il metallo speso deve guadagnarsi il posto. Le run che escono dal dominio di validità del modello non contano.",
+    "statement": "Tieni un componente da 30 W sotto i 95 °C in aria ferma a 25 °C, usando non più di 170 g di alluminio su un estruso che parte da 60 mm — e anche la lunghezza è tua da cambiare. Poi rendi il dissipatore il migliore possibile: il punteggio è resistenza termica per massa, quindi il metallo speso deve guadagnarsi il posto. Le run che escono dal dominio di validità del modello non contano.",
     "targets": [
       {
         "metric": "t_max",
@@ -25,7 +25,7 @@
       "below": 0.01
     },
     "next_step": "la stessa temperatura con meno alluminio",
-    "plain_statement": "Tieni il componente sotto 95 °C in aria ferma a 25 °C, usando al massimo 170 g di alluminio. Il dissipatore è lungo 60 mm. Il tentativo vale soltanto dentro il campo delle correlazioni usate dal modello."
+    "plain_statement": "Tieni il componente sotto 95 °C in aria ferma a 25 °C, usando al massimo 170 g di alluminio. Il dissipatore parte da 60 mm, ed è un controllo come gli altri. Il tentativo vale soltanto dentro il campo delle correlazioni usate dal modello."
   },
   "prediction": {
     "question": "Con questa base, quale numero di alette pensi dia la temperatura più bassa?",
