@@ -441,7 +441,9 @@ const METRICS = [
 /** The `key -> wording` table the challenge reads, built from the same list. */
 const METRIC_LABELS = Object.fromEntries(METRICS.map((metric) => [metric.key, metric]));
 
-/** The moment ceiling the challenge is set against, read from the content rather than typed. */
+/** The moment ceiling the challenge is set against. Typed here because the KPI table is a
+ *  module-level constant built before `content.json` arrives; it must agree with the
+ *  `c_m_c4` target there, and `tests/test_airfoil_solver.py` pins the exercise's targets. */
 const MOMENT_LIMIT = 0.08;
 
 /** The rail's reading: the two numbers the mission is set on, and nothing else (ADR-025).

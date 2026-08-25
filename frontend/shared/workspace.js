@@ -570,10 +570,13 @@ export function createWorkspace(spec) {
 
   // The wheel zooms. With the zoom buttons folded away (ADR-025) the wheel and the keyboard
   // are the two routes in, and the stage already owns its scroll (`overscroll-behavior:
-  // contain`), so hijacking the wheel takes nothing from the page.
+  // contain`), so hijacking the wheel takes nothing from the page. A modified wheel is not
+  // hijacked: Ctrl/⌘+wheel is the browser's own page zoom, and a page that swallows it has
+  // taken an accessibility control to do what a bare wheel already does here.
   stage.addEventListener(
     'wheel',
     (event) => {
+      if (event.ctrlKey || event.metaKey) return;
       event.preventDefault();
       setZoom(state.zoom * (event.deltaY < 0 ? 1.2 : 1 / 1.2));
     },
