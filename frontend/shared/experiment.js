@@ -174,7 +174,10 @@ function renderParam(config, spec, value, onChange) {
   // to express "not set" — and "not set" is the whole meaning of a nullable parameter.
   const bounded = spec.min !== undefined && spec.max !== undefined && !spec.nullable;
   const step = config.step ?? (integer ? 1 : 0.1);
-  const readout = el('span', { class: 'field__value', text: formatNumber(value, integer) });
+  // The exercise may say how a value reads — `4.0°`, `40 m/s` — because the unit is part of
+  // the reading and the schema does not carry one.
+  const show = (v) => (v !== null && config.format ? config.format(v) : formatNumber(v, integer));
+  const readout = el('span', { class: 'field__value', text: show(value) });
 
   // A slider needs two bounds. `mesh_size` is declared `gt=0` with no maximum, so it gets a
   // number input instead of a fabricated upper limit — and an over-budget value comes back
@@ -198,7 +201,7 @@ function renderParam(config, spec, value, onChange) {
     }
     const parsed = Number(input.value);
     if (!Number.isFinite(parsed)) return;
-    readout.textContent = formatNumber(parsed, integer);
+    readout.textContent = show(parsed);
     onChange(parsed);
   });
 

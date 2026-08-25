@@ -233,6 +233,54 @@ export function renderCredibility(container, challenge, report, { checks, detail
 }
 
 /**
+ * The same two indicators as two small lights — `● settled` and `● in range` — for the rail
+ * of an instrument bench (ADR-025).
+ *
+ * The full indicators, with their reasons and the residuals behind them, stay in
+ * {@link renderCredibility}; a light is a summary of exactly the same state, and clicking it
+ * goes there — `onOpen` is the page's own way of opening that drawer. Failing states use
+ * amber and the words the full indicator uses ("needs work", "with care", "not checked"), so
+ * the two renderings can never say different things. §13.9's rule holds: the state is a word,
+ * never only a colour.
+ */
+export function renderCredibilityLights(container, challenge, report, { checks, onOpen } = {}) {
+  if (!container) return;
+  container.replaceChildren();
+
+  const numeric = report ? numericState(report, challenge, checks) : 'unchecked';
+  const warnings = report?.validity?.warnings ?? [];
+  const physical = !report
+    ? 'unchecked'
+    : !warnings.length
+      ? 'yes'
+      : challenge?.requires_valid
+        ? 'no'
+        : 'caution';
+
+  const light = (kind, state) => {
+    const word =
+      state === 'yes'
+        ? t(kind === 'numeric' ? 'exercise.credibility.settled' : 'exercise.credibility.inRange')
+        : t(`exercise.credibility.${state}`);
+    const tone = state === 'yes' ? 'ok' : state === 'unchecked' ? 'off' : 'warn';
+    const button = el(
+      'button',
+      {
+        type: 'button',
+        class: `light light--${tone}`,
+        title: t(`exercise.credibility.${kind}`),
+      },
+      el('span', { 'aria-hidden': 'true', text: '● ' }),
+      el('span', { text: word }),
+    );
+    button.addEventListener('click', () => onOpen?.());
+    return button;
+  };
+
+  container.append(light('numeric', numeric), light('physical', physical));
+}
+
+/**
  * `yes` when every declared check passed, `improve` when one did not, `unchecked` when none ran.
  *
  * The residual-to-tolerance pairing comes from the page's own `CHECKS` spec — the same list
@@ -442,7 +490,14 @@ export function renderKpis(container, spec, report) {
           class: `kpi${known ? '' : ' is-absent'}${state ? ` is-${state}` : ''}`,
           title: [kpi.symbol, kpi.hint].filter(Boolean).join(' — ') || null,
         },
-        el('span', { class: 'kpi__name' }, el('span', { text: kpi.label })),
+        // The goal sits in the label row — "Lift · of 800 N/m" — so the reading underneath
+        // is one number, at reading size, against a target already named (ADR-025).
+        el(
+          'span',
+          { class: 'kpi__name' },
+          el('span', { text: kpi.label }),
+          kpi.goal ? el('span', { class: 'kpi__goal num', text: goalText(kpi, unit) }) : null,
+        ),
         el(
           'span',
           { class: 'kpi__reading' },
@@ -450,12 +505,6 @@ export function renderKpis(container, spec, report) {
             class: known ? 'kpi__value num' : 'kpi__value kpi__value--absent',
             text: known ? decimal(shown, kpi.digits) : (kpi.absent ?? t('exercise.notApplicable')),
           }),
-          known && kpi.goal
-            ? el('span', {
-                class: 'kpi__goal num',
-                text: ` / ${decimal(kpi.goal.value, kpi.digits)}`,
-              })
-            : null,
           el('span', { class: 'kpi__unit', text: known && unit ? ` ${unit}` : '' }),
         ),
         known && kpi.goal ? bar(shown, kpi.goal) : null,
@@ -468,6 +517,19 @@ export function renderKpis(container, spec, report) {
       );
     }),
   );
+}
+
+/** The goal as the label row states it: "of 800 N/m", "under 0.080", "at least 4.5 mWb/m". */
+function goalText(kpi, unit) {
+  const goal = kpi.goal;
+  const value = decimal(goal.value, kpi.digits);
+  const key =
+    goal.comparator === '=='
+      ? 'exercise.tile.goalOf'
+      : goal.comparator === '<' || goal.comparator === '<='
+        ? 'exercise.tile.goalUnder'
+        : 'exercise.tile.goalAtLeast';
+  return t(key, { value, unit: unit ?? '' }).trim();
 }
 
 /**

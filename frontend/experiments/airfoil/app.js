@@ -25,6 +25,7 @@ import { drawCurve } from '/shared/curve.js';
 import {
   groupParameters,
   renderChallenge,
+  renderCredibilityLights,
   renderKpis,
   renderMetrics,
   renderValidity,
@@ -101,12 +102,20 @@ const dom = Object.fromEntries(
     'outcome',
     'hint',
     'credibility',
+    'credibilityLights',
+    'readingHint',
+    'attempts',
     'explain',
     'teacher',
     'whyPanel',
     'predictPanel',
+    'predictDismiss',
     'teacherCard',
+    'missionWhy',
+    'missionWhyToggle',
+    'modelDetails',
     'physical',
+    'modelParams',
     'numerical',
     'study',
     'advanced',
@@ -265,6 +274,7 @@ const PARAM_UI = [
     hint: '',
     title: t('airfoil.params.alphaTitle'),
     step: 0.1,
+    format: (value) => `${value.toFixed(1)}°`,
   },
   {
     name: 'u_inf',
@@ -273,6 +283,7 @@ const PARAM_UI = [
     hint: '',
     title: t('airfoil.params.speedTitle'),
     step: 1,
+    format: (value) => `${value.toFixed(0)} m/s`,
   },
   {
     name: 'kutta',
@@ -430,14 +441,18 @@ const METRICS = [
 /** The `key -> wording` table the challenge reads, built from the same list. */
 const METRIC_LABELS = Object.fromEntries(METRICS.map((metric) => [metric.key, metric]));
 
-/** The few numbers that answer the mission, shown before any table. */
+/** The moment ceiling the challenge is set against, read from the content rather than typed. */
+const MOMENT_LIMIT = 0.08;
+
+/** The rail's reading: the two numbers the mission is set on, and nothing else (ADR-025).
+ *  The sharpest suction moved into *All results*, where the rest of the table already lives. */
 const KPIS = [
   {
     key: 'l_prime',
     label: t('airfoil.headline.lift'),
     symbol: 'L′',
     unit: 'N/m',
-    plainUnit: t('airfoil.headline.perMetre'),
+    plainUnit: 'N/m',
     digits: 0,
     goal: { value: 800, comparator: '==', tolerance: 0.02, tolerance_kind: 'relative' },
     hint: t('airfoil.headline.liftHint'),
@@ -446,34 +461,16 @@ const KPIS = [
     key: 'c_m_c4',
     label: t('airfoil.headline.twist'),
     symbol: 'C_m,c/4',
-    unit: '%',
-    plainUnit: '%',
-    digits: 0,
-    // As a percentage of the limit rather than a signed coefficient: −0.0731 says nothing to
-    // somebody meeting a pitching moment for the first time, and "91 % of the limit" says the
-    // one thing they need. The sign is not thrown away — it is the sentence underneath.
-    from: (found) =>
-      typeof found.metrics?.c_m_c4 === 'number'
-        ? (100 * Math.abs(found.metrics.c_m_c4)) / MOMENT_LIMIT
-        : null,
-    goal: { value: 100, comparator: '<' },
-    note: (value, found) =>
-      t(found.metrics?.c_m_c4 <= 0 ? 'airfoil.headline.noseDown' : 'airfoil.headline.noseUp'),
+    unit: '1',
+    plainUnit: '',
+    digits: 3,
+    // The magnitude against the limit — `0.053` under `0.080` — rather than a percentage of
+    // it: with the goal in the tile's own label row the number can be the coefficient itself.
+    // The sign is not thrown away; it is in *All results*, where the signed value lives.
+    goal: { value: MOMENT_LIMIT, comparator: '<', absolute: true },
     hint: t('airfoil.headline.twistHint'),
   },
-  {
-    key: 'cp_min',
-    label: t('airfoil.headline.suction'),
-    symbol: 'C_p,min',
-    unit: '1',
-    digits: 2,
-    note: () => t('airfoil.headline.suctionNote'),
-    hint: t('airfoil.headline.suctionHint'),
-  },
 ];
-
-/** The moment ceiling the challenge is set against, read from the content rather than typed. */
-const MOMENT_LIMIT = 0.08;
 
 const CHECKS = [
   {
@@ -525,7 +522,7 @@ const FIELD_VIEW = {
  * controls write to: copying it — `params = {...form}` — produces something that looks right and
  * then never changes again, which is a bug you only see by moving a slider.
  */
-const forms = { physical: {}, numerical: {}, study: {} };
+const forms = { physical: {}, model: {}, numerical: {}, study: {} };
 let catalogue = { all: [], byMode: {} };
 let report = null;
 let running = false;
@@ -536,7 +533,7 @@ let guide = null;
 
 /** Every parameter, as the solver will receive it. */
 function currentParams() {
-  return { ...forms.physical, ...forms.numerical, ...forms.study };
+  return { ...forms.physical, ...forms.model, ...forms.numerical, ...forms.study };
 }
 
 function solver() {
@@ -572,6 +569,11 @@ async function run() {
     setStatusOn(dom, t('airfoil.noSolver'), 'error');
     return;
   }
+
+  // The first Compute asks the prediction — inline, above the action bar, and without
+  // blocking anything: the solve below proceeds whether it is answered, dismissed or
+  // ignored. All three rules in `journey.js` stand. ADR-025.
+  revealPredictionOnce();
 
   running = true;
   syncGuidePresets();
@@ -626,8 +628,10 @@ function mountGuide() {
     figures: { flow: drawFlowFigure, slice: drawSliceFigure, naca: drawNacaFigure },
     onPreset: runPreset,
     // The guide does not know where the bench is, and should not: it hands back control and
-    // the page decides what "go to the simulator" means on this page.
+    // the page decides what "go to the simulator" means — here, closing the mission drawer
+    // the lesson lives in and returning to the instrument.
     onSkip: () => {
+      setMissionDrawer(false);
       dom.workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
   });
@@ -696,6 +700,11 @@ async function fetchReport(result) {
 function present() {
   renderChallenge(dom.challenge, content?.challenge, report, METRIC_LABELS);
   renderKpis(dom.kpis, KPIS, report);
+  dom.readingHint.hidden = report !== null;
+  renderCredibilityLights(dom.credibilityLights, content?.challenge, report, {
+    checks: CHECKS,
+    onOpen: () => openDrawer('checks-panel'),
+  });
   renderMetrics(dom.metrics, METRICS, report);
   renderVerification(dom.verification, CHECKS, report);
   renderValidity(dom.validity, report);
@@ -1143,7 +1152,8 @@ function refreshRuns(rows = runs.load(EXERCISE), evicted = 0) {
   dom.runsNote.textContent = parts.join(' ');
   for (const button of [dom.exportCsv, dom.exportJson, dom.clearRuns])
     button.disabled = !rows.length;
-  dom.compareJump.hidden = rows.length < 2;
+  renderAttempts(rows);
+  dom.compareJump.hidden = !rows.length;
   if (selected.size >= 2) path.mark('compare');
   if (!rows.length) dom.runsNote.textContent = t('runs.none');
   else if (rows.length === 1) dom.runsNote.textContent += ` ${t('runs.one')}`;
@@ -1213,11 +1223,20 @@ function derivedName() {
     : `NACA m=${shape.m.toFixed(3)} p=${shape.p.toFixed(2)} t=${shape.t.toFixed(3)}`;
 }
 
+/** The rail shows only what changes the answer most directly; the rest folds (ADR-025). */
+const RAIL_PARAMS = new Set(['alpha_deg', 'u_inf']);
+
 function buildForms(previous = currentParams()) {
   const chosen = solver();
   if (!chosen) return;
   const byGroup = groupParameters(PARAM_UI);
-  forms.physical = buildParamForm(dom.physical, chosen, byGroup.physical, previous);
+  // The physical group splits across the fold: angle and speed are the rail's two dials, and
+  // the Kutta switch — a model choice, not a dial — goes behind "Shape, air and numerics"
+  // with everything else. Two live objects, both merged by `currentParams`.
+  const rail = byGroup.physical.filter((config) => RAIL_PARAMS.has(config.name));
+  const folded = byGroup.physical.filter((config) => !RAIL_PARAMS.has(config.name));
+  forms.physical = buildParamForm(dom.physical, chosen, rail, previous);
+  forms.model = buildParamForm(dom.modelParams, chosen, folded, previous);
   forms.numerical = buildParamForm(dom.numerical, chosen, byGroup.numerical, previous);
   forms.study = buildParamForm(dom.study, chosen, byGroup.study, previous);
   // `rho`, `mu` and `sound_speed` are deliberately absent from PARAM_UI: they are consequences
@@ -1333,11 +1352,114 @@ function numberField(id, label, value, min, max, step, unit, onChange) {
   );
 }
 
+/* -------------------------------------------------------------- drawers and the mission */
+
+/**
+ * The folded rows of the bench (ADR-025): the mission's "Why this target?" and each link in
+ * the model-details row opens one drawer in the page flow. One at a time — the row is a set
+ * of tabs laid flat, and two open drawers would rebuild the stacked page the redesign
+ * removed. Ephemeral on purpose: which drawer is open is not state worth remembering.
+ */
+function drawerToggles() {
+  return [...dom.modelDetails.querySelectorAll('[data-drawer]')];
+}
+
+function setDrawer(id, open) {
+  const drawer = document.getElementById(id);
+  if (!drawer) return;
+  drawer.hidden = !open;
+  for (const button of drawerToggles()) {
+    if (button.dataset.drawer === id) button.setAttribute('aria-expanded', String(open));
+  }
+}
+
+function openDrawer(id, { reveal = true } = {}) {
+  for (const button of drawerToggles()) {
+    if (button.dataset.drawer !== id) {
+      setDrawer(button.dataset.drawer, false);
+    }
+  }
+  setDrawer(id, true);
+  if (reveal) revealPanel(document.getElementById(id));
+}
+
+function toggleDrawer(id) {
+  const drawer = document.getElementById(id);
+  if (!drawer) return;
+  if (drawer.hidden) openDrawer(id);
+  else setDrawer(id, false);
+}
+
+for (const button of document.querySelectorAll('#model-details [data-drawer]')) {
+  button.addEventListener('click', () => toggleDrawer(button.dataset.drawer));
+}
+
+/** The mission drawer: the plain statement, the live targets, and the guided lesson. */
+function setMissionDrawer(open) {
+  dom.missionWhy.hidden = !open;
+  dom.missionWhyToggle.setAttribute('aria-expanded', String(open));
+}
+
+dom.missionWhyToggle.addEventListener('click', () => setMissionDrawer(dom.missionWhy.hidden));
+
+/* -------------------------------------------------------- the prediction, at first Compute */
+
+let predictionAsked = false;
+
+/**
+ * Reveal the prediction strip the first time Compute is pressed, if there is a question and
+ * no stored answer. Asked once per page load: a visitor who dismisses it has answered "not
+ * now", and a strip that reappeared on every solve would be a gate wearing a reminder's face.
+ */
+function revealPredictionOnce() {
+  if (predictionAsked) return;
+  predictionAsked = true;
+  if (!content?.prediction || !dom.predictPanel) return;
+  if (prediction?.answer()) return;
+  dom.predictPanel.hidden = false;
+}
+
+dom.predictDismiss?.addEventListener('click', () => {
+  dom.predictPanel.hidden = true;
+});
+
+/* ------------------------------------------------------------------- the attempt chips */
+
+/**
+ * The kept attempts as chips in the action bar: `01 α 2.0° · 491`. Clicking one loads that
+ * attempt's inputs — the same route as the table's Load. Numbered from the oldest, so a chip
+ * keeps its number as later attempts arrive; only the latest few fit, and the full table is
+ * one click away behind `+ compare`.
+ */
+const CHIP_LIMIT = 4;
+
+function renderAttempts(rows) {
+  if (!dom.attempts) return;
+  const oldestFirst = [...rows].reverse();
+  const shown = oldestFirst.slice(-CHIP_LIMIT);
+  const offset = oldestFirst.length - shown.length;
+  dom.attempts.replaceChildren(
+    ...shown.map((entry, index) => {
+      const alpha = Number(entry.physical?.alpha_deg ?? 0).toFixed(1);
+      const lift = Math.round(entry.metrics?.l_prime ?? 0);
+      const label = `${String(offset + index + 1).padStart(2, '0')} α ${alpha}° · ${lift}`;
+      const chip = el('button', {
+        type: 'button',
+        class: 'chip',
+        text: label,
+        title: t('runs.load'),
+      });
+      chip.addEventListener('click', () => loadRun(entry));
+      return chip;
+    }),
+  );
+}
+
 /* ---------------------------------------------------------------------------- start-up */
 
 let content = null;
 
-mountChrome('experiments');
+mountChrome('experiments', { crumb: t('airfoil.crumb'), details: '#model-details' });
 buildShapeControls(dom.shapeControls, SHAPE_CONTROLS, shape, onShapeSlider);
 renderAtmosphere();
 
@@ -1345,7 +1467,11 @@ workspace = createWorkspace({
   root: dom.workspace,
   viewer: dom.viewer,
   editor: dom.editor,
-  fitLabel: t('airfoil.fitProfile'),
+  // The chips over the plate read PAN · PROBE · SHAPE · FIT: one word each, because they sit
+  // on the instrument itself and a sentence there covers the data.
+  editLabel: t('airfoil.shapeTool'),
+  editTitle: t('workspace.edit.title'),
+  fitLabel: t('workspace.fit.label'),
   exportName: 'airfoil-field',
   subject: profileBox,
   onDraw: drawOverlay,
@@ -1430,10 +1556,10 @@ dom.keep.addEventListener('click', () => {
   const entry = row();
   if (kept.length && changedTheDesign(kept[0], entry)) path.mark('improve');
   const { rows, evicted } = runs.save(EXERCISE, entry);
+  // The new chip in the action bar is the feedback; the table waits behind `+ compare`.
   refreshRuns(rows, evicted);
-  revealPanel(dom.runsPanel);
 });
-dom.compareJump.addEventListener('click', () => revealPanel(dom.runsPanel));
+dom.compareJump.addEventListener('click', () => openDrawer('runs-panel'));
 dom.exportCsv.addEventListener('click', () =>
   runs.download('airfoil-runs.csv', runs.toCsv(runs.load(EXERCISE)), 'text/csv'),
 );
@@ -1504,7 +1630,12 @@ function mountLoop() {
     dom.predictPanel?.remove();
   }
   renderTeacher(dom.teacher, content?.teacher);
-  if (!content?.teacher) dom.teacherCard?.remove();
+  if (!content?.teacher) {
+    // The drawer and the row button that opens it go together: a link to a removed drawer
+    // is a control that does nothing, which is worse than one that is absent.
+    dom.modelDetails.querySelector('[data-drawer="teacher-card"]')?.remove();
+    dom.teacherCard?.remove();
+  }
 }
 
 try {
