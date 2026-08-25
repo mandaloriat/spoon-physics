@@ -65,26 +65,30 @@ async function openAdvanced(page) {
 
 /* ------------------------------------------------------ 0. the guided path (ADR-021) */
 
-test('a first-time visitor meets the lesson before the mission', async ({ page }) => {
+/** The lesson lives behind the mission strip's "Why this target?" now (ADR-025). */
+async function openMission(page) {
+  await page.locator('#mission-why-toggle').click();
+  await expect(page.locator('#mission-why')).toBeVisible();
+}
+
+test('the lesson is one click away, beside the mission it explains', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
 
   await page.goto('/experiments/airfoil/');
 
-  // Chapter one, and a way out of the whole thing, both present immediately.
+  // The first screen is the instrument, not the lesson (ADR-025); the way in is the mission
+  // strip's own link, and behind it the chapters are whole: chapter one, the count, and a way
+  // out, all present.
+  await expect(page.locator('.guide__chapter')).toBeHidden();
+  await openMission(page);
   await expect(page.locator('.guide__chapter')).toBeVisible();
   await expect(page.locator('.guide__count')).toContainText('Chapter 1 of 4');
   await expect(page.locator('.guide__skip')).toBeVisible();
 
-  // Above the mission, which is the point: "800 N/m with |C_m,c/4| < 0.08" is the wall this
-  // exists to remove, so it must not be the first thing on the page.
-  const order = await page.evaluate(() => ({
-    guide: document.querySelector('#guide').getBoundingClientRect().top,
-    challenge: document.querySelector('.mission__challenge').getBoundingClientRect().top,
-  }));
-  expect(order.guide).toBeLessThan(order.challenge);
-
-  // And the bench is never hidden behind it: no modal, no overlay, no scroll lock.
+  // The drawer also carries the challenge's plain statement — the lesson sits beside the
+  // mission it explains, and the bench is never hidden: no modal, no overlay, no scroll lock.
+  await expect(page.locator('.challenge__statement')).toBeVisible();
   await expect(page.locator('#workspace')).toBeAttached();
   await expect(page.locator('.guide')).not.toHaveAttribute('role', 'dialog');
 
@@ -102,16 +106,20 @@ test('a first-time visitor meets the lesson before the mission', async ({ page }
 
 test('skipping the lesson is one click, and is remembered', async ({ page }) => {
   await page.goto('/experiments/airfoil/');
+  await openMission(page);
   await expect(page.locator('.guide__chapter')).toBeVisible();
 
+  // Skipping folds the lesson and hands back the instrument: the drawer closes with it.
   await page.locator('.guide__skip').click();
   await expect(page.locator('.guide__chapter')).toHaveCount(0);
-  await expect(page.locator('.guide--folded')).toBeVisible();
+  await expect(page.locator('#mission-why')).toBeHidden();
 
-  // The point of remembering it: a second visit is not walled off from the instrument again.
+  // The point of remembering it: a second visit opens the drawer on the folded state.
   await page.reload();
   await expect(page.locator('#param-alpha_deg')).toBeVisible();
+  await openMission(page);
   await expect(page.locator('.guide__chapter')).toHaveCount(0);
+  await expect(page.locator('.guide--folded')).toBeVisible();
 
   // Folded, not deleted — anybody who wants the explanation after all can have it.
   await page.locator('.guide__reopen').click();
@@ -120,6 +128,7 @@ test('skipping the lesson is one click, and is remembered', async ({ page }) => 
 
 test('a preset sets the incidence and runs it, and says why while it cannot', async ({ page }) => {
   await page.goto('/experiments/airfoil/');
+  await openMission(page);
   await page.locator('.guide__dot').nth(3).click();
 
   const six = page.locator('.guide__preset[data-alpha="6"]');
@@ -153,8 +162,9 @@ test('a browser that refuses storage still gets the page, and the lesson', async
   page.on('pageerror', (error) => errors.push(error.message));
 
   await page.goto('/experiments/airfoil/');
-  await expect(page.locator('.guide__chapter')).toBeVisible();
   await expect(page.locator('#param-alpha_deg')).toBeVisible();
+  await page.locator('#mission-why-toggle').click();
+  await expect(page.locator('.guide__chapter')).toBeVisible();
 
   // Skipping still works for this visit; it just will not be there next time.
   await page.locator('.guide__skip').click();
@@ -219,16 +229,22 @@ test('no internal identifier reaches the screen, before or after a run', async (
 
   await setParam(page, 'alpha_deg', 4.6);
   await solve(page);
-  // Open everything that folds, so nothing hides behind a closed disclosure.
-  await page.locator('#results details.subpanel > summary').first().click();
-  await page.locator('#results details.subpanel > summary').last().click();
-  expect(await visibleText()).not.toMatch(new RegExp(FORBIDDEN.join('|')));
+  // Open every model-details drawer in turn — they are an accordion, so each is checked while
+  // it is the open one — and everything that folds inside the checks drawer too.
+  for (const button of await page.locator('#model-details [data-drawer]').all()) {
+    await button.click();
+    for (const summary of await page.locator('.drawer:not([hidden]) details > summary').all()) {
+      await summary.click();
+    }
+    expect(await visibleText()).not.toMatch(new RegExp(FORBIDDEN.join('|')));
+  }
 
   // Including the comparison table, which used to print the flattened storage path.
   await page.getByRole('button', { name: 'Keep attempt' }).click();
   await setParam(page, 'alpha_deg', 2.0);
   await solve(page);
   await page.getByRole('button', { name: 'Keep attempt' }).click();
+  await page.locator('#model-details [data-drawer="runs-panel"]').click();
   await page.locator('#runs-table tbody input[type=checkbox]').first().check();
   await page.locator('#runs-table tbody input[type=checkbox]').nth(1).check();
   await expect(page.locator('#compare table')).toBeVisible();
@@ -255,16 +271,17 @@ test('Advanced is closed on arrival and opens on request', async ({ page }) => {
 test('the page opens with no empty result panels', async ({ page }) => {
   await ready(page);
 
-  // Before the first run there is nothing to report, so the reporting sections do not exist.
-  // The page used to open with three panels reading "Nothing computed yet".
-  await expect(page.locator('#results')).toBeHidden();
-  await expect(page.locator('#kpis')).toBeHidden();
+  // Before the first run there is nothing to report: the rail's reading is a one-line note,
+  // the sweep panel does not exist, and nothing on the page apologises for being empty.
+  await expect(page.locator('.kpi')).toHaveCount(0);
+  await expect(page.locator('#reading-hint')).toBeVisible();
   await expect(page.locator('#sweep-panel')).toBeHidden();
   expect(await page.locator('main').innerText()).not.toContain('Nothing computed yet');
 
   await solve(page);
-  await expect(page.locator('#results')).toBeVisible();
-  await expect(page.locator('.kpi')).not.toHaveCount(0);
+  // The reading arrives in the rail — two numbers, each against its goal — and the note goes.
+  await expect(page.locator('.kpi')).toHaveCount(2);
+  await expect(page.locator('#reading-hint')).toBeHidden();
 });
 
 test('physical inputs, numerical settings and the study are separate groups', async ({ page }) => {
@@ -275,12 +292,14 @@ test('physical inputs, numerical settings and the study are separate groups', as
   // merely in the reading order: each group is its own panel, and no control is in two.
   await expect(page.locator('#physical #param-alpha_deg')).toBeVisible();
   await expect(page.locator('#physical #param-u_inf')).toBeVisible();
-  await expect(page.locator('#physical #param-kutta')).toBeVisible();
+  // The Kutta switch is a model choice, not a dial: it folds with the conditions (ADR-025).
+  await expect(page.locator('#model-params #param-kutta')).toBeVisible();
   await expect(page.locator('#numerical #param-panels')).toBeVisible();
   await expect(page.locator('#numerical #param-resolution')).toBeVisible();
   await expect(page.locator('#study #param-sweep_from_deg')).toBeVisible();
 
   await expect(page.locator('#physical #param-panels')).toHaveCount(0);
+  await expect(page.locator('#physical #param-kutta')).toHaveCount(0);
   await expect(page.locator('#numerical #param-alpha_deg')).toHaveCount(0);
 
   // Density, viscosity and the speed of sound are consequences of the atmosphere, so they are
@@ -320,7 +339,9 @@ test('the ISA atmosphere resolves altitude to the standard values', async ({ pag
     }
   }
 
-  // And the altitude control drives them: the derived block is what a visitor reads.
+  // And the altitude control drives them: the derived block is what a visitor reads. Both
+  // controls live behind "Shape, air and numerics" now.
+  await openAdvanced(page);
   await page.locator('#derived-toggle').click();
   await expect(page.locator('#derived')).toContainText('1.2250');
   await page.locator('#phys-altitude').fill('5000');
@@ -435,6 +456,8 @@ test('the aerodynamic centre is unavailable until a sweep has been run', async (
   await setParam(page, 'sweep_to_deg', 8);
   await solve(page);
 
+  // The sweep lives in the surface-pressure drawer now (ADR-025).
+  await page.locator('#model-details [data-drawer="curve-panel"]').click();
   await expect(page.locator('#sweep-panel')).toBeVisible();
   await expect(page.locator('#sweep-metrics')).toContainText('Aerodynamic centre');
   await expect(page.locator('#sweep-curve .curve__trace')).toHaveCount(2);
@@ -456,6 +479,7 @@ test('turning the Kutta condition off returns the page to zero lift, and explain
 }) => {
   await ready(page);
   await setParam(page, 'alpha_deg', 5);
+  await openAdvanced(page);
   await page.locator('#param-kutta').selectOption('none');
   await solve(page);
 
@@ -513,7 +537,7 @@ test('the control points exist only in Edit shape', async ({ page }) => {
   expect(await handles()).toBe(0);
 });
 
-test('pan, zoom, probe and reset work on a computed field', async ({ page }) => {
+test('pan, zoom, probe and fit work on a computed field', async ({ page }) => {
   await ready(page);
   await solve(page);
 
@@ -521,28 +545,36 @@ test('pan, zoom, probe and reset work on a computed field', async ({ page }) => 
     page.locator('.workspace__zoom').evaluate((node) => node.getBoundingClientRect().width);
   const fitted = await zoomWidth();
 
-  // Zoom in enlarges the box the widget renders into — a redraw at a larger size, not a
-  // magnified raster — and the stage then has something to scroll.
-  await page.locator('[data-tool=zoom-in]').click();
+  // The zoom buttons folded into the wheel and the keyboard (ADR-025). Zooming enlarges the
+  // box the widget renders into — a redraw at a larger size, not a magnified raster — and the
+  // stage then has something to scroll.
+  await page.locator('#stage').focus();
+  await page.keyboard.press('+');
   expect(await zoomWidth()).toBeGreaterThan(fitted * 1.2);
   await expect(page.locator('#stage')).toHaveClass(/is-zoomed/);
 
   // Pan, by the keyboard route, which is the one that has to work for everybody.
-  await page.locator('#stage').focus();
   const before = await page.locator('#stage').evaluate((node) => node.scrollLeft);
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   expect(await page.locator('#stage').evaluate((node) => node.scrollLeft)).toBeGreaterThan(before);
 
-  // Reset returns the view, by button and by keystroke alike.
-  await page.locator('[data-tool=reset]').click();
+  // 0 returns the view.
+  await page.keyboard.press('0');
   expect(await zoomWidth()).toBeCloseTo(fitted, 0);
   expect(await page.locator('#stage').evaluate((node) => node.scrollLeft)).toBe(0);
+
+  // The wheel zooms too — the route a pointer takes now that the buttons are gone.
+  await page.locator('#stage').hover();
+  await page.mouse.wheel(0, -240);
+  expect(await zoomWidth()).toBeGreaterThan(fitted);
+  await page.keyboard.press('0');
 
   // Fit frames the profile, which is a real zoom because the section is a fraction of the window.
   await page.locator('[data-tool=fit]').click();
   expect(await zoomWidth()).toBeGreaterThan(fitted);
-  await page.locator('[data-tool=reset]').click();
+  await page.locator('#stage').focus();
+  await page.keyboard.press('0');
 
   // Probe pins a value and its coordinates.
   await expect(page.locator('#readout')).toBeHidden();
@@ -723,6 +755,10 @@ test('a kept run records enough to be recomputed, and two runs can be compared',
   await setParam(page, 'alpha_deg', 4.6);
   await solve(page);
   await page.getByRole('button', { name: 'Keep attempt' }).click();
+  // The kept attempt appears as a chip in the action bar; the table is one click behind it.
+  await expect(page.locator('#attempts .chip')).toHaveCount(1);
+  await expect(page.locator('#attempts .chip').first()).toContainText('α 4.6°');
+  await page.locator('#model-details [data-drawer="runs-panel"]').click();
   await expect(page.locator('#runs-table tbody tr')).toHaveCount(1);
 
   const [row] = await page.evaluate(() =>
@@ -773,6 +809,7 @@ test('a browser that refuses to store cannot take the page down', async ({ page 
   await setParam(page, 'alpha_deg', 4.6);
   await solve(page);
   await page.getByRole('button', { name: 'Keep attempt' }).click();
+  await page.locator('#model-details [data-drawer="runs-panel"]').click();
   await expect(page.locator('#runs-table tbody tr')).toHaveCount(1);
 
   await page.evaluate(() => {
@@ -868,18 +905,19 @@ test('the geometry the solver read is reported back', async ({ page }) => {
 
 /* ------------------------------------------------------------------------------- layout */
 
-test('the workspace dominates on a desktop and stacks on a phone', async ({ page }) => {
+test('the instrument dominates on a desktop and stacks on a phone', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await ready(page);
 
-  // The whole argument of the redesign, measured: the instrument takes most of the bench.
+  // The whole argument of the redesign, measured: the instrument takes most of the bench and
+  // the rail sits beside it (ADR-025).
   const wide = await page.evaluate(() => {
     const workspace = document.querySelector('.workspace').getBoundingClientRect();
-    const layout = document.querySelector('.bench__layout').getBoundingClientRect();
-    const controls = document.querySelector('.controls').getBoundingClientRect();
+    const main = document.querySelector('.bench__main').getBoundingClientRect();
+    const rail = document.querySelector('.rail').getBoundingClientRect();
     return {
-      share: workspace.width / layout.width,
-      sideBySide: Math.abs(workspace.top - controls.top) < 80,
+      share: workspace.width / main.width,
+      sideBySide: Math.abs(workspace.top - rail.top) < 80,
     };
   });
   expect(wide.share).toBeGreaterThan(0.6);
@@ -890,7 +928,7 @@ test('the workspace dominates on a desktop and stacks on a phone', async ({ page
   await page.waitForTimeout(200);
   const narrow = await page.evaluate(() => ({
     stacked:
-      document.querySelector('.controls').getBoundingClientRect().top >
+      document.querySelector('.rail').getBoundingClientRect().top >
       document.querySelector('.workspace').getBoundingClientRect().top + 100,
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     stageHeight: document.getElementById('stage').getBoundingClientRect().height,
@@ -907,10 +945,12 @@ test('every tool is reachable from the keyboard', async ({ page }) => {
   // Each toolbar control is a real button with an accessible name, and the stage itself is
   // focusable so panning and zooming never require a pointer.
   const toolbar = await page.evaluate(() =>
-    [...document.querySelectorAll('.workspace__toolbar button')].map((button) => ({
-      name: button.getAttribute('aria-label') ?? button.textContent.trim(),
-      focusable: button.tabIndex >= 0 || !button.hasAttribute('tabindex'),
-    })),
+    [...document.querySelectorAll('.workspace__toolbar button, .workspace__layerbar button')].map(
+      (button) => ({
+        name: button.getAttribute('aria-label') ?? button.textContent.trim(),
+        focusable: button.tabIndex >= 0 || !button.hasAttribute('tabindex'),
+      }),
+    ),
   );
   expect(toolbar.length).toBeGreaterThan(8);
   for (const button of toolbar) {

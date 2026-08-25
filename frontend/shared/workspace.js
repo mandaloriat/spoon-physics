@@ -120,6 +120,10 @@ export function createWorkspace(spec) {
   const toolbar = root.querySelector('.workspace__toolbar');
   const scale = root.querySelector('.workspace__scale');
   const readout = root.querySelector('.workspace__readout');
+  // Where the annotation-layer switches render. A page that carries a `.workspace__layerbar`
+  // (the instrument bench pins it to the plate's bottom-left corner) gets them there; one
+  // that does not keeps them in the toolbar, as before.
+  const layerbar = root.querySelector('.workspace__layerbar');
 
   const capabilities = viewerCapabilities(viewer);
   const state = {
@@ -237,24 +241,9 @@ export function createWorkspace(spec) {
       hidden: () => !editor,
       available: () => true,
     },
-    {
-      id: 'zoom-out',
-      group: 'view',
-      label: t('workspace.zoomOut.label'),
-      icon: '−',
-      action: () => setZoom(state.zoom / ZOOM_STEP),
-      available: () =>
-        state.zoom > ZOOM_MIN ? { ok: true } : { ok: false, why: t('workspace.zoomOut.why') },
-    },
-    {
-      id: 'zoom-in',
-      group: 'view',
-      label: t('workspace.zoomIn.label'),
-      icon: '+',
-      action: () => setZoom(state.zoom * ZOOM_STEP),
-      available: () =>
-        state.zoom < ZOOM_MAX ? { ok: true } : { ok: false, why: t('workspace.zoomIn.why') },
-    },
+    // The zoom in / out / reset buttons folded into Fit plus the wheel and the keyboard
+    // (ADR-025): the stage zooms on scroll and on +/-/0, and Fit frames the subject. What
+    // ADR-017 still demands is that Fit, when it cannot act, says why rather than vanishing.
     {
       id: 'fit',
       group: 'view',
@@ -263,14 +252,6 @@ export function createWorkspace(spec) {
       action: fitSubject,
       available: () =>
         spec.subject?.() ? { ok: true } : { ok: false, why: t('workspace.fit.why') },
-    },
-    {
-      id: 'reset',
-      group: 'view',
-      label: t('workspace.reset.label'),
-      icon: '⟲',
-      action: resetView,
-      available: () => true,
     },
     {
       id: 'vectors',
@@ -383,15 +364,13 @@ export function createWorkspace(spec) {
       );
     }
     // The layer switches are a group of their own: they say what is *drawn over* the field,
-    // which is a different question from what the pointer does.
-    if (state.layers.size) {
-      nodes.push(
-        el(
-          'div',
-          { class: 'toolgroup toolgroup--layers' },
-          ...[...state.layers.values()].map(renderLayerToggle),
-        ),
-      );
+    // which is a different question from what the pointer does. On a page with a layer bar
+    // they render there — the bottom-left corner of the instrument — instead of here.
+    const layerToggles = state.layers.size ? [...state.layers.values()].map(renderLayerToggle) : [];
+    if (layerbar) {
+      layerbar.replaceChildren(...layerToggles);
+    } else if (layerToggles.length) {
+      nodes.push(el('div', { class: 'toolgroup toolgroup--layers' }, ...layerToggles));
     }
     nodes.push(renderDensity());
     toolbar.replaceChildren(...nodes);
@@ -588,6 +567,21 @@ export function createWorkspace(spec) {
     showReadout();
     draw();
   });
+
+  // The wheel zooms. With the zoom buttons folded away (ADR-025) the wheel and the keyboard
+  // are the two routes in, and the stage already owns its scroll (`overscroll-behavior:
+  // contain`), so hijacking the wheel takes nothing from the page. A modified wheel is not
+  // hijacked: Ctrl/⌘+wheel is the browser's own page zoom, and a page that swallows it has
+  // taken an accessibility control to do what a bare wheel already does here.
+  stage.addEventListener(
+    'wheel',
+    (event) => {
+      if (event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      setZoom(state.zoom * (event.deltaY < 0 ? 1.2 : 1 / 1.2));
+    },
+    { passive: false },
+  );
 
   // Keyboard is a first-class route to every one of these, not an afterthought: the stage is
   // focusable, arrows pan, +/- zoom, and 0 resets.

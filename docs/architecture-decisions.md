@@ -1326,6 +1326,79 @@ developer's machine is fine — the [ADR-007](#adr-007--the-dependency-is-pinned
 failure with a package in place of the pin, and the same symptom: nothing happens, and nothing
 says why. `test_the_image_vendors_the_same_widgets_the_script_does` now compares the two lists.
 
+---
+
+## ADR-025 — The site becomes an instrument: dark ground, one accent, and less prose on the first screen
+
+**Decision.** The site is redesigned to an **instrument-first** identity, from a design handoff
+carried out at high fidelity: dark ground, a single cyan accent, the computed field as the
+primary visual, mono uppercase labels, square corners everywhere, and drastically less prose on
+the first screen of every page. Shipped for the **site shell** (header, language switch,
+footer), the **homepage**, and the **airfoil bench**; the other three exercise pages share the
+shell and the dark palette and keep the ADR-017 bench arrangement until they migrate to the same
+layout, one page at a time.
+
+**What the shell is now.** One plain 56 px header row — the `◦∿` mark, the wordmark in mono
+caps, a breadcrumb chip on a bench page (`/ 01 The wing`), and a single nav link: `Code`, or
+`Model details` on a bench that has the row to anchor to. The language switch keeps ADR-020's
+behaviour to the letter — two real links to `?lang=xx` — and only changes clothes. The footer
+carries three things: the way into the advanced lab (which replaces the homepage shelf), the
+attribution, and one caveat line — *Models for exploring ideas, not professional engineering
+tools* — which replaces the boxed disclaimer on the redesigned pages. The static markup keeps a
+fallback footer with that line, because the sentence is a requirement of the project and must
+not depend on a module graph loading.
+
+**What the homepage is now.** Hero (the invitation beside a real computed field with a mono
+readout of the facts it was solved at), three challenge cells that are links — meta row,
+question, one mission line, the field — a loop strip (*01 Predict · 02 Compute · 03 Compare*
+and the one sentence about numbers describing reality badly), the folded method section, and
+the footer. The tagline ADR-016 fixed and ADR-022 replaced is dropped altogether; the hero is
+the claim. The hero's readout states only what is true of the committed thumbnail —
+`scripts/make-thumbnails.py` solves NACA 2412 at α = 4.6°, 40 m/s — and carries no timer,
+because a static page cannot honestly own one. The thumbnails are regenerated at 2× for the
+hero plate (a finer solve, not an upscale; the script's `THUMB_WIDTH` exists for this).
+
+**What the airfoil bench is now.** Mission strip (the whole brief in one line, and *Why this
+target?* opening the plain statement, the live targets and the ADR-021 lesson) → instrument
+(the field in a bounded plate on a gridded ground, tools overlaid at the corners: PAN · PROBE ·
+SHAPE · FIT with the field picker, the colour scale, the annotation layers, the probe readout)
+→ rail (the three choices that change the answer; everything else behind *Shape, air and
+numerics*, closed; then the Reading — the two mission numbers at 34 px against their goals, and
+the two credibility indicators as lights, `● settled` / `● in range`, amber with today's
+wording when they fail) → action bar (Compute, Keep attempt, the verdict, and the kept attempts
+as chips: `01 α 4.0° · 728`) → the model-details row, whose links open the contract's sections
+as drawers. **Nothing is deleted**: all nine contract sections remain reachable; they stop
+being stacked panels. The zoom in/out/reset buttons fold into Fit plus the wheel and the
+keyboard, keeping ADR-017's disabled-with-a-reason rule for what remains.
+
+**The prediction moves, and its rules do not.** The four-step path bar is no longer displayed
+(`mountPath` still records, so nothing downstream loses its storage), and the prediction is
+asked inline, above the action bar, the first time Compute is pressed with no stored answer.
+All three of `journey.js`'s rules stand: it never gates the solve, it is never scored, and it
+stays a radio group with *Not sure yet* as a first-class answer.
+
+**Colour, and what this supersedes.** One accent. This walks back ADR-021's two-colour rule as
+a page-wide system — blue for the instrument, violet for the lesson voice — to exactly one
+place: violet survives *inside the guided lesson's own output*, which is the only place the
+explaining voice still renders, so the handover from story to bench is still visible where
+there is a story. ADR-016's tagline placement and ADR-022's card anatomy (badge, problem
+paragraph, CTA) are superseded as described above; ADR-022's substance — predict first, plain
+statement first, two credibility indicators, no formula on the homepage — is kept whole.
+Fraunces is dropped with the serif voice, which also removes the site's only self-hosted font
+(67 kB); both faces are now stack-only.
+
+**Dark is the only mode.** The handoff left the choice open — ship dark-only, or derive a light
+counterpart before writing the CSS. Decided for dark-only: the field plate, the overlay halo
+palette and the grid texture are all authored against this ground, and a light derivation would
+be a second design pretending to be a theme. `color-scheme: dark` ships in the tokens and on
+every page's meta, so browser form controls agree.
+
+**Cost, stated plainly.** The four pages are no longer one layout: until the other three
+migrate, `lab.css` carries the ADR-017 bench and the instrument bench side by side, scoped
+under `.bench--instrument`. A returning visitor's muscle memory for the stacked panels is
+spent. And the lesson is now behind a click (*Why this target?*) rather than above the mission
+— accepted because the mission strip a first-timer meets is one plain sentence, not the
+symbol wall ADR-021 was built to soften, and the way in sits beside the very line it explains.
 
 ---
 

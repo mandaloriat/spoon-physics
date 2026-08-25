@@ -30,77 +30,68 @@ test('the homepage leads with the problems, and shows a real field for each', as
 
   await page.goto('/');
   await expect(page).toHaveTitle(/Spoon Physics/);
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  // The hero is the claim now: the invitation on the left, a computed field on the right.
+  await expect(page.getByRole('heading', { level: 1 }).first()).toContainText('Guess first');
+  await expect(page.locator('.hero__panel img')).toBeVisible();
+  await expect(page.locator('.hero__readout')).toContainText('Target 800');
 
-  // The educational disclaimer is a requirement, not decoration.
-  await expect(page.locator('.disclaimer')).toContainText('not professional engineering tools');
+  // The educational disclaimer became the footer's caveat line — one sentence, every page.
+  await expect(page.locator('.site-footer__caveat')).toContainText(
+    'not professional engineering tools',
+  );
 
-  // Every challenge is reachable from the homepage as a card.
+  // Every challenge is reachable from the homepage as a full-cell link.
   for (const experiment of ['airfoil', 'truss', 'heatsink']) {
-    await expect(
-      page.locator(`.card--available a[href="/experiments/${experiment}/"]`).first(),
-    ).toBeVisible();
+    await expect(page.locator(`.challenge[href="/experiments/${experiment}/"]`)).toBeVisible();
   }
-  // And the advanced lab is reachable too, from the shelf rather than the grid — a page that
-  // ships without a way in has not shipped, whatever shape its way in has. ADR-022.
-  await expect(page.locator('.shelf a[href="/experiments/solenoid/"]')).toBeVisible();
-  // What is still planned must read as planned, not as a broken link. The count used to be
-  // pinned at one, which was a fact about the release that wrote it rather than about the
-  // page: the heat sink was the last planned card and building it made the assertion false.
-  // What must hold at any count, including none, is that a planned card is not a link.
-  await expect(page.locator('.card--planned a')).toHaveCount(0);
+  // And the advanced lab is reachable too, from the footer rather than the grid — a page that
+  // ships without a way in has not shipped, whatever shape its way in has. ADR-025.
+  await expect(page.locator('.site-footer a[href="/experiments/solenoid/"]')).toBeVisible();
+  await expect(page.locator('.challenges a[href="/experiments/solenoid/"]')).toHaveCount(0);
 
-  // Every card leads with the question it answers, so someone who does not know the subject
-  // still knows whether they want it (ADR-021).
-  await expect(page.getByRole('link', { name: 'How much tilt does a wing need?' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Which bar gives way first?' })).toBeVisible();
-
-  // And every card states its mission in a sentence a person can picture — visible, not folded.
-  // The fold that used to hold `η < 1` and `4.5 mWb/m` is gone: the engineering statement of
-  // each target is on the challenge page, where the vocabulary to read it is a paragraph away,
-  // and a symbol on a card is a gate in front of a choice. ADR-022.
+  // Every cell leads with the question it answers, so someone who does not know the subject
+  // still knows whether they want it (ADR-021), and states its mission in a sentence a person
+  // can picture. No formula appears before the visitor has chosen anything — ADR-022's rule,
+  // kept by the redesign.
+  await expect(page.locator('.challenge h2').first()).toContainText(
+    'How much tilt does a wing need?',
+  );
   const quantities = ['80 kg', '2.4 tonnes', '170 g'];
   for (const [index, quantity] of quantities.entries()) {
-    const mission = page.locator('.card--available .card__mission').nth(index);
+    const mission = page.locator('.challenge__mission').nth(index);
     await expect(mission).toBeVisible();
     await expect(mission).toContainText(quantity);
   }
-  await expect(page.locator('.card-grid .card__numbers')).toHaveCount(0);
-
-  await expect(page.getByRole('link', { name: /Try a wing/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Build the bridge/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Design the heat sink/ })).toBeVisible();
-
-  // The magnetic circuit keeps its URL and loses its card: it is a working lab rather than a
-  // challenge with a target a student can picture, and the shelf says so. ADR-022, §9.3.
-  await expect(page.locator('.card-grid a[href="/experiments/solenoid/"]')).toHaveCount(0);
-  await expect(page.locator('.shelf a[href="/experiments/solenoid/"]')).toBeVisible();
 
   // The thumbnails are real solves committed by scripts/make-thumbnails.py, so they must
-  // actually load — a broken one is a card that says nothing at all.
+  // actually load — a broken one is a cell that says nothing at all.
   const shots = await page.evaluate(() =>
-    [...document.querySelectorAll('.card__shot img')].map((img) => ({
+    [...document.querySelectorAll('.challenge__shot img, .hero__shot img')].map((img) => ({
       src: img.getAttribute('src'),
       loaded: img.complete && img.naturalWidth > 0,
     })),
   );
-  expect(shots.length).toBe(3);
+  expect(shots.length).toBe(4);
   for (const shot of shots) {
     expect(shot.src).toMatch(/^\/assets\/thumbnails\//);
     expect(shot.loaded).toBe(true);
   }
 
-  // The explanation of how it is built is still here, still underneath the invitation, and now
-  // in one block instead of a list of solver modes: which of two routes computed a field is a
-  // question for the exercise page that offers the choice, not for somebody deciding which
-  // challenge to open. ADR-022, §6.8.
-  await expect(page.locator('#modes')).toContainText('Method, code and data');
+  // The loop strip is what "how to play" compressed into, and the method fold is still under
+  // the invitation: which of two routes computed a field is a question for the exercise page.
+  await expect(page.locator('.loop')).toContainText('Predict');
+  await expect(page.locator('.loop__note')).toContainText('computed well');
+  await expect(page.locator('#method')).toContainText('Method, code and data');
   const order = await page.evaluate(() => {
-    const cards = document.querySelector('.card-grid').getBoundingClientRect().top;
-    const about = document.querySelector('.about').getBoundingClientRect().top;
-    return { cards, about };
+    const cells = document.querySelector('.challenges').getBoundingClientRect().top;
+    const method = document.querySelector('#method').getBoundingClientRect().top;
+    return { cells, method };
   });
-  expect(order.cards).toBeLessThan(order.about);
+  expect(order.cells).toBeLessThan(order.method);
+
+  // "How it works" opens the fold it points at.
+  await page.locator('#how-link').click();
+  await expect(page.locator('#method-fold')).toHaveAttribute('open', '');
 
   // The capability notice is filled in from /health, so its text proves the API answered.
   await expect(page.locator('#capability')).not.toContainText('Checking what is installed');
@@ -166,7 +157,7 @@ test('a server without FEniCSx is fully usable and says so', async ({ page }) =>
   const info = await page.evaluate(async () => (await fetch('/health')).json());
   const hasFenics = (info.solvers ?? []).some((name) => name.startsWith('dolfinx.'));
 
-  await page.locator('#modes details').first().click();
+  await page.locator('#method details').first().click();
   await expect(page.locator('#capability')).toContainText(
     hasFenics ? 'both the fast computation and the finite-element one' : 'no FEniCSx is installed',
   );
@@ -215,7 +206,10 @@ for (const [experiment, control] of Object.entries(OFFLINE_CONTROL)) {
     await expect(page.locator('#status')).toContainText('paused for maintenance');
 
     // Everything that does not need the server still works: the problem, the geometry, the
-    // didactics, and any runs already kept.
+    // didactics, and any runs already kept. On an instrument bench (ADR-025) the didactics
+    // live behind the model-details row, so that drawer is opened first where it exists.
+    const opener = page.locator('#model-details [data-drawer="model-panel"]');
+    if (await opener.count()) await opener.click();
     await expect(page.locator('.lesson__block').first()).toBeVisible();
     await expect(page.locator(control).first()).toBeEnabled();
   });
@@ -661,6 +655,9 @@ for (const experiment of ['airfoil', 'solenoid', 'truss', 'heatsink']) {
 
   test(`the ${experiment} page folds its didactics without losing them`, async ({ page }) => {
     await page.goto(`/experiments/${experiment}/`);
+    // On an instrument bench the lesson is a drawer behind the model-details row (ADR-025).
+    const opener = page.locator('#model-details [data-drawer="model-panel"]');
+    if (await opener.count()) await opener.click();
     const blocks = page.locator('.lesson__block');
     await expect(blocks).not.toHaveCount(0);
 

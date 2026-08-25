@@ -25,6 +25,7 @@ browser.
 from __future__ import annotations
 
 import functools
+import os
 import re
 import struct
 import sys
@@ -39,8 +40,10 @@ OUT = ROOT / "frontend" / "assets" / "thumbnails"
 COLORMAP_SOURCE = ROOT / "frontend" / "vendor" / "fenix-spoon" / "viewer" / "colormap.js"
 
 #: Thumbnail size. Small on purpose: these are cards, and the field's own sampling grid is
-#: coarser than this anyway, so anything larger is interpolation dressed up as detail.
-WIDTH = 480
+#: coarser than this anyway, so anything larger is interpolation dressed up as detail. The
+#: instrument-first homepage (ADR-025) shows the airfoil field at 660 CSS pixels, so the
+#: committed set is generated at THUMB_WIDTH=960 — a finer solve, not an upscale.
+WIDTH = int(os.environ.get("THUMB_WIDTH", "480"))
 
 
 # ------------------------------------------------------------------ colormaps, from upstream

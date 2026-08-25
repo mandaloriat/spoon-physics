@@ -5,7 +5,7 @@
 <title data-i18n="airfoil.title">Airfoil design — Spoon Physics</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" data-i18n-attr="content: airfoil.description" content="An airfoil design exercise: hit a lift target under a pitching-moment constraint, with computed fields, engineering metrics and a verification residual on every run.">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 <link rel="alternate" hreflang="en" href="/experiments/airfoil/?lang=en">
 <link rel="alternate" hreflang="it" href="/experiments/airfoil/?lang=it">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
@@ -58,46 +58,35 @@
 
 <div id="header"></div>
 
-<!-- The page is one path, in this order: mission, configure, run, explore, check, keep,
-     understand. Every section below is one of those steps and says which — the arrangement
-     docs/architecture-decisions.md ADR-017 sets out. -->
-<main class="bench">
+<!-- The bench, instrument-first (ADR-025): mission strip, instrument and rail, action bar,
+     model details. Nothing from the exercise contract is deleted — the nine sections are all
+     reachable from the details row; they stop being stacked panels on the bench. -->
+<main class="bench bench--instrument">
 
-  <!-- ------------------------------------------------------------------ 1. Mission -->
-  <header class="mission" id="mission">
-    <div class="mission__head">
-      <p class="mission__eyebrow" data-i18n="airfoil.eyebrow">Exercise 1 · ideal flow with a Kutta condition</p>
-      <h1 data-i18n="airfoil.heading">Airfoil design</h1>
-    </div>
+  <!-- ------------------------------------------------------------ 1. the mission strip -->
+  <header class="strip" id="mission">
+    <h1 class="strip__title" data-i18n="airfoil.missionHeading">Make it lift 800 N per metre.</h1>
+    <p class="strip__constraint" data-i18n="airfoil.missionConstraint">within 2 % · |C_m,c/4| &lt; 0.08</p>
+    <button type="button" class="strip__why" id="mission-why-toggle" aria-expanded="false"
+            aria-controls="mission-why" data-i18n="airfoil.whyTarget">Why this target?</button>
+  </header>
 
-    <!-- 0. Learn. The short lesson this page opens with, between the title and the mission —
-         above the mission on purpose, because "800 N/m with |C_m,c/4| < 0.08" is the wall that
-         stops somebody who has never met a wing section, and it is the second thing they should
-         read rather than the first. Skippable from every chapter and remembered, so a returning
-         visitor lands on the bench. Filled by `shared/guide.js`; empty and harmless if the
-         content file carries no chapters. See ADR-021. -->
+  <!-- What "Why this target?" opens: the challenge's plain statement with its live targets,
+       and the guided lesson — the ADR-021 chapters, entered from here rather than shown to
+       everyone on arrival. Filled by `shared/guide.js`; empty and harmless if the content
+       file carries no chapters. -->
+  <section class="drawer" id="mission-why" hidden aria-labelledby="challenge-heading">
+    <h2 id="challenge-heading" class="drawer__title" data-i18n="bench.mission">The challenge</h2>
+    <div id="challenge"></div>
     <section class="guide" id="guide" aria-labelledby="guide-heading">
       <h2 id="guide-heading" class="visually-hidden" data-i18n="guide.heading">Before you start</h2>
     </section>
-
-    <div class="mission__challenge panel panel--mission" aria-labelledby="challenge-heading">
-      <h2 id="challenge-heading" class="panel__title" data-i18n="bench.mission">The mission</h2>
-      <div id="challenge"></div>
-    </div>
-    <!-- Where you are in the loop, and nothing more. Not a wizard: no step is disabled, none
-         gates another, and a visitor who goes straight to the instrument simply leaves the
-         first one unlit. See `shared/journey.js` and ADR-022. -->
-    <div class="path" id="path" role="group" aria-label="The path through this challenge"
-         data-i18n-attr="aria-label: path.label"></div>
-  </header>
-
-  <!-- The prediction, above the bench and before the first solve. It changes no input and
-       blocks nothing; "not sure yet" is a real answer. What it buys is the only thing an
-       exercise cannot supply afterwards — something of the visitor's own to be surprised by. -->
-  <section class="panel panel--predict" id="predict-panel" aria-labelledby="predict-heading">
-    <h2 id="predict-heading" class="panel__title" data-i18n="prediction.heading">Before you compute</h2>
-    <div id="prediction"></div>
   </section>
+
+  <!-- The four-step path is not displayed any more (ADR-025); `mountPath` keeps recording the
+       steps so nothing downstream loses its storage. -->
+  <div class="path" id="path" hidden role="group" aria-label="The path through this challenge"
+       data-i18n-attr="aria-label: path.label"></div>
 
   <p id="widgets-missing" class="notice notice--warn" hidden data-i18n-html="bench.widgetsMissing">
     The browser widgets have not been built. Run
@@ -105,19 +94,14 @@
   </p>
   <p id="maintenance" class="notice notice--warn" hidden></p>
 
-  <!-- ------------------------------------------- 2. Configure · 3. Run · 4. Explore -->
-  <div class="bench__layout">
+  <!-- --------------------------------------------------- 2. the instrument and the rail -->
+  <div class="bench__main">
 
-    <!-- The workspace is the instrument: it takes most of the width, it owns its own tools,
-         and every tool it cannot offer says why rather than disappearing. -->
+    <!-- The instrument. The field sits in a bounded plate; the tools, the colour scale, the
+         annotation layers and the probe readout overlay the corners of the section. -->
     <section class="workspace" id="workspace" aria-labelledby="workspace-heading">
       <h2 id="workspace-heading" class="visually-hidden" data-i18n="bench.workspace">Workspace</h2>
 
-      <div class="workspace__toolbar" role="toolbar" aria-label="Visualisation tools"
-           data-i18n-attr="aria-label: bench.visualisationTools"></div>
-
-      <!-- The frame is fixed and the stage scrolls inside it, so the colour scale stays put
-           while the field is panned. -->
       <div class="workspace__frame">
         <div class="workspace__stage" id="stage" aria-label="Computed field. Drag to pan, plus and minus to zoom."
              data-i18n-attr="aria-label: bench.stageAria">
@@ -126,7 +110,7 @@
             <!-- Annotations in domain coordinates, drawn by the page over the field. Aligned
                  exactly because the viewer's colorbar is off, so its plot area is this box. -->
             <svg class="workspace__overlay" id="overlay" preserveAspectRatio="none" aria-hidden="true"></svg>
-            <!-- Hidden except in Edit shape, so a drag can never be both a pan and a reshaping.
+            <!-- Hidden except in Shape mode, so a drag can never be both a pan and a reshaping.
                  The window is 2.6 chords by 1.2: wide enough to show the stream turning, tight
                  enough that the section is the subject rather than a mark near the middle. The
                  panel method has no outer boundary, so this is a framing choice and not a
@@ -136,61 +120,70 @@
                             data-i18n-attr="aria-label: airfoil.editorAria"></fs-geometry-2d>
           </div>
         </div>
-        <div class="workspace__scale" id="scale" aria-hidden="true"></div>
       </div>
 
-      <div class="workspace__readout" id="readout" hidden></div>
-
-      <div class="workspace__field">
+      <!-- Top-left: the pointer tools and the compact field picker. -->
+      <div class="workspace__hud">
+        <div class="workspace__toolbar" role="toolbar" aria-label="Visualisation tools"
+             data-i18n-attr="aria-label: bench.visualisationTools"></div>
         <label class="workspace__fieldpick" for="field">
-          <span data-i18n="bench.field">Field</span>
+          <span class="visually-hidden" data-i18n="bench.field">Field</span>
           <select id="field" aria-label="Field shown" data-i18n-attr="aria-label: bench.fieldShown"></select>
         </label>
-        <p class="field__hint" id="field-hint"></p>
       </div>
+
+      <!-- Bottom-left: the annotation layers, rendered here by the workspace. -->
+      <div class="workspace__layerbar"></div>
+
+      <!-- Top-right: the colour scale, outside the pan. Bottom-right: the probe readout. -->
+      <div class="workspace__scale" id="scale" aria-hidden="true"></div>
+      <div class="workspace__readout" id="readout" hidden></div>
     </section>
 
-    <!-- 2. Configure. Three groups, and only the first two are on the main path. -->
-    <form class="controls" id="controls" aria-labelledby="controls-heading" onsubmit="return false">
-      <h2 id="controls-heading" class="panel__title" data-i18n="bench.configure">Configure</h2>
-
-      <section class="group" aria-labelledby="design-heading">
-        <h3 id="design-heading" data-i18n="bench.design">Design</h3>
+    <!-- The rail: the three choices that change the answer, everything else folded, and the
+         reading. -->
+    <aside class="rail">
+      <form class="rail__block controls" id="controls" aria-labelledby="controls-heading" onsubmit="return false">
+        <h2 id="controls-heading" class="rail__label" data-i18n="bench.design">Your choices</h2>
         <div class="field">
           <label class="field__label" for="profile"><span data-i18n="airfoil.profile">Profile</span></label>
           <select id="profile" aria-label="Profile" data-i18n-attr="aria-label: airfoil.profile"></select>
         </div>
-        <div id="shape-controls"></div>
-        <p class="field__hint" id="shape-note"></p>
-        <div class="button-row">
-          <button id="edit-shape" type="button" data-i18n="airfoil.editShape">Edit shape</button>
-          <button id="reset" type="button" data-i18n="airfoil.resetProfile">Reset profile</button>
-        </div>
-      </section>
-
-      <section class="group" aria-labelledby="conditions-heading">
-        <h3 id="conditions-heading" data-i18n="bench.conditions">Conditions</h3>
         <div id="physical"></div>
-        <div id="atmosphere"></div>
-        <button type="button" class="disclose" id="derived-toggle" aria-expanded="false" aria-controls="derived-wrap"
-                data-i18n="bench.whatFollows">
-          What follows from these
-        </button>
-        <div id="derived-wrap" hidden>
-          <dl class="stats stats--derived" id="derived"></dl>
-        </div>
-      </section>
+      </form>
 
-      <!-- Closed on arrival. Nothing in here is needed to answer the mission, and everything
-           in here changes the error rather than the answer. -->
-      <details class="group group--advanced" id="advanced">
-        <summary><span data-i18n="bench.advanced">Advanced</span><span class="group__note" data-i18n="airfoil.advancedNote">numerics and study</span></summary>
+      <!-- Closed on arrival. Camber, atmosphere, the model switch, numerics and the sweep all
+           live here; the content is unchanged from the old Design / Conditions / More
+           controls groups — only the default visibility changed. -->
+      <details class="rail__more" id="advanced">
+        <summary><span data-i18n="bench.more">Shape, air and numerics</span> →</summary>
         <div class="group__body">
+          <h4 data-i18n="airfoil.shapeHeading">Shape</h4>
+          <div id="shape-controls"></div>
+          <p class="field__hint" id="shape-note"></p>
+          <div class="button-row">
+            <button id="edit-shape" type="button" data-i18n="airfoil.editShape">Edit shape</button>
+            <button id="reset" type="button" data-i18n="airfoil.resetProfile">Reset profile</button>
+          </div>
+
+          <h4 data-i18n="bench.conditions">Conditions of the test</h4>
+          <div id="model-params"></div>
+          <div id="atmosphere"></div>
+          <button type="button" class="disclose" id="derived-toggle" aria-expanded="false" aria-controls="derived-wrap"
+                  data-i18n="bench.whatFollows">
+            Derived values
+          </button>
+          <div id="derived-wrap" hidden>
+            <dl class="stats stats--derived" id="derived"></dl>
+          </div>
+
+          <h4 data-i18n="bench.numericsHeading">Numerics</h4>
           <p class="field__hint" data-i18n="bench.advancedError">
             These change the error, not the answer. How much they change it is what the
             verification panel measures.
           </p>
           <div id="numerical"></div>
+
           <h4 data-i18n="airfoil.studyHeading">Study</h4>
           <p class="field__hint" data-i18n="airfoil.studyLead">
             A single incidence, or a sweep. A sweep is the only way to get an aerodynamic
@@ -201,52 +194,95 @@
           <select id="solver" aria-label="Solver" hidden data-i18n-attr="aria-label: bench.solverLabel"></select>
         </div>
       </details>
-    </form>
+
+      <!-- The reading: two numbers against their goals, and the two credibility lights. -->
+      <div class="rail__block rail__reading">
+        <p class="rail__label" data-i18n="bench.reading">Reading</p>
+        <div class="kpis" id="kpis"></div>
+        <p class="field__hint" id="reading-hint" data-i18n="exercise.everySolve">Computed on every attempt.</p>
+        <div class="rail__lights" id="credibility-lights"></div>
+      </div>
+    </aside>
   </div>
 
-  <!-- 3. Run. One bar, always reachable, carrying every action that changes state. -->
+  <!-- The prediction, revealed inline the first time Compute is pressed with no stored
+       answer. It changes no input and blocks nothing; "not sure yet" is a real answer. All
+       three rules in `journey.js` stand: never gates, never scored, stays a radio group. -->
+  <section class="predictbar" id="predict-panel" hidden aria-labelledby="predict-heading">
+    <h2 id="predict-heading" class="visually-hidden" data-i18n="prediction.heading">Before you compute</h2>
+    <div id="prediction"></div>
+    <button type="button" class="predictbar__dismiss" id="predict-dismiss" data-i18n="prediction.dismiss">Not now</button>
+  </section>
+
+  <!-- ------------------------------------------------------------------ 3. the action bar -->
   <div class="actionbar" id="actionbar">
+    <div class="actionbar__actions">
+      <!-- Compute starts disabled and the status says why. The page cannot know whether it
+           can solve until the solver catalogue and /health have answered, and a button
+           offered before then can only mislead. -->
+      <button id="run" class="primary" type="button" disabled data-i18n="bench.run">Compute</button>
+      <button id="cancel" type="button" hidden data-i18n="bench.cancel">Cancel</button>
+      <button id="keep" type="button" disabled data-i18n="bench.keep">Keep attempt</button>
+    </div>
     <div class="actionbar__status">
       <span class="status-dot" id="dot" data-state="idle"></span>
-      <!-- Run starts disabled and this says why. The page cannot know whether it can solve
-           until the solver catalogue and /health have answered, and a button offered before
-           then can only mislead. -->
       <span id="status" role="status" data-i18n="bench.checkingServer">Checking what this server can do…</span>
       <progress id="progress" value="0" max="1" hidden></progress>
     </div>
-    <div class="actionbar__actions">
-      <button id="run" class="primary" type="button" disabled data-i18n="bench.run">Run</button>
-      <button id="cancel" type="button" hidden data-i18n="bench.cancel">Cancel</button>
-      <button id="keep" type="button" disabled data-i18n="bench.keep">Keep result</button>
-      <button id="compare-jump" type="button" hidden data-i18n="bench.compare">Compare</button>
+    <div class="actionbar__verdict">
+      <p class="outcome" id="outcome" hidden></p>
+      <p class="hint" id="hint" hidden></p>
+    </div>
+    <!-- The kept attempts, as chips: clicking one loads it, `+ compare` opens the table. -->
+    <div class="actionbar__attempts">
+      <span id="attempts" class="attempts"></span>
+      <button id="compare-jump" type="button" class="chip chip--more" hidden
+              data-i18n="bench.compareChip">+ compare</button>
     </div>
   </div>
 
-  <!-- ------------------------------------------------------ 5. Check. Hidden until run. -->
-  <div class="results" id="results" hidden>
+  <!-- ------------------------------------------------------------- 4. model details row -->
+  <nav class="details-row" id="model-details" aria-label="Model details"
+       data-i18n-attr="aria-label: bench.lesson">
+    <span class="details-row__label" data-i18n="bench.lesson">Model details</span>
+    <button type="button" data-drawer="why-panel" aria-expanded="false" aria-controls="why-panel"
+            data-i18n="bench.why">Why it happens</button>
+    <button type="button" data-drawer="model-panel" aria-expanded="false" aria-controls="model-panel"
+            data-i18n="bench.modelLimits">The model &amp; its limits</button>
+    <button type="button" data-drawer="checks-panel" aria-expanded="false" aria-controls="checks-panel"
+            data-i18n="bench.checksRun">Checks on this run</button>
+    <button type="button" data-drawer="curve-panel" aria-expanded="false" aria-controls="curve-panel"
+            data-i18n="airfoil.pressureCurve">Surface pressure curve</button>
+    <button type="button" data-drawer="results-panel" aria-expanded="false" aria-controls="results-panel"
+            data-i18n="bench.everyQuantity">All results</button>
+    <button type="button" data-drawer="runs-panel" aria-expanded="false" aria-controls="runs-panel"
+            data-i18n="bench.exportData">Export CSV / JSON</button>
+    <button type="button" data-drawer="teacher-card" aria-expanded="false" aria-controls="teacher-card"
+            data-i18n="teacher.summary">For teachers</button>
+  </nav>
 
-    <section class="panel panel--answer" aria-labelledby="answer-heading">
-      <h2 id="answer-heading" class="panel__title" data-i18n="bench.answer">The answer</h2>
-      <div id="prediction-recall"></div>
-      <div class="kpis" id="kpis"></div>
-      <p class="outcome" id="outcome" hidden></p>
-      <p class="hint" id="hint" hidden></p>
-      <details class="subpanel">
-        <summary data-i18n="bench.everyQuantity">All results</summary>
-        <div id="metrics"></div>
-      </details>
-      <p class="field__hint" data-i18n="airfoil.noDrag">
-        No drag and no lift-to-drag ratio: this model is inviscid, so both are zero and a ratio
-        of zeroes is not a metric. The chordwise force that does come out of the pressure
-        integration is in the verification panel, where it belongs — it is an error bar.
-      </p>
-    </section>
+  <!-- The drawers the row opens. Everything the contract's nine sections carry is in one of
+       these; the run-dependent renderers say "computed on every attempt" until there is one. -->
 
-    <section class="panel" aria-labelledby="trust-heading">
-      <h2 id="trust-heading" class="panel__title" data-i18n="bench.trust">Is the result credible?</h2>
+  <!-- Unlocked by the first computation, not by a click: the explanation arrives once there
+       is something of the visitor's own to explain. §7.9. -->
+  <section class="drawer" id="why-panel" hidden aria-labelledby="why-heading">
+    <h2 id="why-heading" class="drawer__title" data-i18n="bench.why">Why it happens</h2>
+    <div class="explain" id="explain"></div>
+  </section>
+
+  <section class="drawer" id="model-panel" hidden aria-labelledby="lesson-heading">
+    <h2 id="lesson-heading" class="drawer__title" data-i18n="bench.modelLimits">The model &amp; its limits</h2>
+    <p class="field__hint" id="field-hint"></p>
+    <div class="lesson__blocks" id="lesson"></div>
+  </section>
+
+  <div id="results">
+    <section class="drawer" id="checks-panel" hidden aria-labelledby="trust-heading">
+      <h2 id="trust-heading" class="drawer__title" data-i18n="bench.trust">Is the result credible?</h2>
       <!-- Two indicators, because they answer two different questions: whether the arithmetic
-           has settled, and whether the physics applies here. A solve can be impeccable on the
-           first and beside the point on the second, and one badge cannot say so. -->
+           has settled, and whether the physics applies here. The rail's two lights are these
+           two indicators; this is where their reasons live. -->
       <div id="credibility"></div>
       <details class="subpanel" id="checks">
         <summary data-i18n="bench.checks">Numerical checks and model limits</summary>
@@ -260,39 +296,40 @@
       </details>
     </section>
 
-    <section class="panel panel--wide" aria-labelledby="cp-heading">
-      <h2 id="cp-heading" class="panel__title" data-i18n="airfoil.surfacePressure">Surface pressure</h2>
+    <section class="drawer" id="curve-panel" hidden aria-labelledby="cp-heading">
+      <h2 id="cp-heading" class="drawer__title" data-i18n="airfoil.surfacePressure">Surface pressure</h2>
       <div id="cp-curve" class="plot"></div>
       <p class="field__hint" id="geometry-readback"></p>
+
+      <section id="sweep-panel" aria-labelledby="sweep-heading" hidden>
+        <h3 id="sweep-heading" class="drawer__title" data-i18n="airfoil.acrossSweep">Across the sweep</h3>
+        <div class="sweep-layout">
+          <div id="sweep-curve" class="plot"></div>
+          <dl class="stats" id="sweep-metrics"></dl>
+        </div>
+        <p class="field__hint" data-i18n="airfoil.sweepNote">
+          The aerodynamic centre is the regression slope of the pitching moment against lift,
+          subtracted from the quarter chord. Thin-airfoil theory says 0.25; thickness moves it
+          slightly aft. The fit's R² is shown because a straight line through a curve is not a
+          point.
+        </p>
+      </section>
     </section>
 
-    <section class="panel panel--wide" id="sweep-panel" aria-labelledby="sweep-heading" hidden>
-      <h2 id="sweep-heading" class="panel__title" data-i18n="airfoil.acrossSweep">Across the sweep</h2>
-      <div class="sweep-layout">
-        <div id="sweep-curve" class="plot"></div>
-        <dl class="stats" id="sweep-metrics"></dl>
-      </div>
-      <p class="field__hint" data-i18n="airfoil.sweepNote">
-        The aerodynamic centre is the regression slope of the pitching moment against lift,
-        subtracted from the quarter chord. Thin-airfoil theory says 0.25; thickness moves it
-        slightly aft. The fit's R² is shown because a straight line through a curve is not a
-        point.
+    <section class="drawer" id="results-panel" hidden aria-labelledby="answer-heading">
+      <h2 id="answer-heading" class="drawer__title" data-i18n="bench.everyQuantity">All results</h2>
+      <div id="prediction-recall"></div>
+      <div id="metrics"></div>
+      <p class="field__hint" data-i18n="airfoil.noDrag">
+        No drag and no lift-to-drag ratio: this model is inviscid, so both are zero and a ratio
+        of zeroes is not a metric. The chordwise force that does come out of the pressure
+        integration is in the verification panel, where it belongs — it is an error bar.
       </p>
     </section>
-
   </div>
 
-  <!-- Unlocked by the first computation, not by a click. The explanation used to sit above
-       the controls, which meant a student read the answer and then moved a slider until the
-       number agreed — a prediction that can never be wrong. §7.9. -->
-  <section class="panel panel--wide" id="why-panel" aria-labelledby="why-heading">
-    <h2 id="why-heading" class="panel__title" data-i18n="bench.why">Why it happens</h2>
-    <div class="explain" id="explain"></div>
-  </section>
-
-  <!-- ------------------------------------------------------------ 6. Keep and compare -->
-  <section class="panel panel--runs" id="runs-panel" aria-labelledby="runs-heading">
-    <h2 id="runs-heading" class="panel__title" data-i18n="bench.keptRuns">Kept runs</h2>
+  <section class="drawer" id="runs-panel" hidden aria-labelledby="runs-heading">
+    <h2 id="runs-heading" class="drawer__title" data-i18n="bench.keptRuns">Your attempts</h2>
     <p class="field__hint" id="runs-note"></p>
     <div id="runs-table" class="table-scroll"></div>
     <div class="button-row">
@@ -303,32 +340,21 @@
     <div id="compare" class="table-scroll"></div>
   </section>
 
-  <!-- ------------------------------------------------------- 7. Understand the model -->
-  <section class="lesson" aria-labelledby="lesson-heading">
-    <h2 id="lesson-heading" class="panel__title" data-i18n="bench.lesson">Understand the model</h2>
-    <p class="field__hint" data-i18n="bench.lessonLead">
-      Everything the exercise rests on, in the order it matters. Nothing here has been
-      shortened — it has been moved out of the way of the experiment.
-    </p>
-    <div class="lesson__blocks" id="lesson"></div>
-    <!-- Addressed to somebody else entirely, which is why it is folded and why it is worth
-         having: the misconception a class arrives with and the question to end on are the two
-         things a teaching page usually leaves the teacher to invent. §4.4. -->
-    <details class="subpanel" id="teacher-card">
-      <summary data-i18n="teacher.summary">For teachers</summary>
-      <div id="teacher"></div>
-    </details>
+  <!-- Addressed to somebody else entirely, which is why it is folded and why it is worth
+       having: the misconception a class arrives with and the question to end on are the two
+       things a teaching page usually leaves the teacher to invent. §4.4. -->
+  <section class="drawer" id="teacher-card" hidden aria-labelledby="teacher-heading">
+    <h2 id="teacher-heading" class="drawer__title" data-i18n="teacher.summary">For teachers</h2>
+    <div id="teacher"></div>
   </section>
-
-  <p class="disclaimer">
-    <strong data-i18n="home.disclaimerLabel">Note.</strong>
-    <span data-i18n="home.disclaimer">These models are for exploring ideas and comparing designs. They are not professional
-    engineering tools.</span>
-  </p>
 
 </main>
 
-<div id="footer"></div>
+<!-- The static fallback carries the caveat that replaced the boxed disclaimer; the JS footer
+     replaces it with the full three-item row. -->
+<div id="footer" class="site-footer">
+  <p class="site-footer__caveat" data-i18n="footer.caveat">Models for exploring ideas, not professional engineering tools.</p>
+</div>
 
 <script type="module" src="/experiments/airfoil/app.js"></script>
 <script type="module">
