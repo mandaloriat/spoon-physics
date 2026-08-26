@@ -107,14 +107,17 @@ class TestReadingTheSensorOutOfTheSection:
         assert electrode.chamfer_width == 0.0
         assert electrode.chamfer_height == 0.0
 
-    def test_two_electrodes_are_refused_rather_than_one_of_them_ignored(self):
-        """A guard ring is a different problem, and the failure mode of accepting it silently
-        is a capacitance computed against a conductor that was not in the model."""
+    def test_two_driven_electrodes_are_refused_rather_than_one_of_them_ignored(self):
+        """A driven guard ring is a different problem, and the failure mode of accepting it
+        silently is a capacitance computed against a conductor that was not in the model.
+
+        A *grounded* region is the other case and is accepted — it is the shell, and
+        `TestAgainstTheUpstreamAdapter` is why that distinction is worth drawing."""
         guard = {
             "name": "guard",
             "shape": {"type": "polygon2d", "points": [[0.020, 0.001], [0.024, 0.001],
                                                       [0.024, 0.003], [0.020, 0.003]]},
-            "material": {"voltage": 0.0},
+            "material": {"voltage": 0.5},
         }
         with pytest.raises(ValueError, match="one electrode"):
             run(section(extra=[guard]))
@@ -361,3 +364,133 @@ class TestTheDeclarations:
         assert CapacitorAxi2D.convergence is not None
         assert CapacitorAxi2D.convergence.on_failure == "return"
         assert CapacitorAxi2D.convergence.unit is None
+
+
+class TestAgainstTheUpstreamAdapter:
+    """§8's third row, and the receipt for ADR-026.
+
+    Upstream ships ``mock.electrostatics_axi2d`` for exactly this geometry kind — and the
+    kind's own documentation names *this sensor* as the case that motivated it. So the first
+    question any reviewer should ask about this exercise is why the lab wrote a solver at all,
+    and the answer has two halves. The half that would hold even if the mock were perfect is
+    ADR-026's: a calibration is a curve, and none of §7's three headline numbers is a reduction
+    of any single field. The half measured here is that on this configuration the mock cannot
+    be used as the check either.
+
+    Both solvers are given the **same section**, which is why
+    :func:`physics_lab.solvers.capacitor_axi2d._read` accepts a grounded region: a cross-check
+    between two payloads is a comparison of two geometries.
+    """
+
+    @staticmethod
+    def both_plates(shell_top: float = 1.0e-3, gap: float = 90e-6) -> Axisymmetric2D:
+        """The section with the shell drawn as a region, which upstream needs and this solver
+        merely tolerates.
+
+        The coating is a millimetre thick here and a micron thick in life. That is not sloppy,
+        it is the first half of the finding: at the real thickness no grid point of a uniform
+        raster over a 10 mm window falls inside it, so the mock pins one potential instead of
+        two, warns that there is no capacitance to report, and returns a uniform field — which
+        it is right to do and which cannot be checked against.
+        """
+        inner, outer, thickness, chamfer = 0.011, 0.0145, 0.004, 0.0015
+        bottom = shell_top + gap
+        top = bottom + thickness
+        return Axisymmetric2D(
+            bounds=(0.0, 0.0, 0.030, 0.010),
+            background={"eps_r": 1.0},
+            regions=[
+                {
+                    "name": "shell",
+                    "shape": {
+                        "type": "polygon2d",
+                        "points": [[1e-7, 1e-7], [0.0299, 1e-7], [0.0299, shell_top],
+                                   [1e-7, shell_top]],
+                    },
+                    "material": {"voltage": 0.0},
+                },
+                {
+                    "name": "electrode",
+                    "shape": {
+                        "type": "polygon2d",
+                        "points": [
+                            [inner, bottom],
+                            [outer, bottom],
+                            [outer, top - chamfer],
+                            [outer - chamfer, top],
+                            [inner + chamfer, top],
+                            [inner, top - chamfer],
+                        ],
+                    },
+                    "material": {"voltage": 1.0},
+                },
+            ],
+        )
+
+    @staticmethod
+    def upstream(geometry: Axisymmetric2D, resolution: int) -> float:
+        from fenixspoon.solvers.mock_electrostatics import MockElectrostaticsAxi2D
+
+        mock = MockElectrostaticsAxi2D()
+        result = mock.solve(
+            geometry,
+            mock.Params(resolution=resolution, iterations=40000, write_vtk=False),
+            SolverContext(progress_cb=lambda event: None),
+        )
+        assert result.converged, "the relaxation stopped short; this is not the comparison"
+        return result.metrics["capacitance"]
+
+    def test_the_shell_is_read_as_the_floor_so_one_section_serves_both(self):
+        """The precondition for everything below. Drawn or left out, the coating means the
+        same thing, and the capacitance is the same number either way."""
+        drawn = run(self.both_plates())
+        implied = run(section())
+        assert drawn.metrics["capacitance"] == pytest.approx(
+            implied.metrics["capacitance"], rel=0.01
+        )
+
+    def test_a_grounded_region_floating_in_the_gap_is_refused(self):
+        """Tolerating the shell is not the same as tolerating a conductor anywhere. One that
+        does not reach the floor would be ignored, and the capacitance would come back as
+        though it were not there."""
+        with pytest.raises(ValueError, match="floats"):
+            floating = self.both_plates()
+            shell = floating.regions[0]
+            shell.shape.points = [[0.001, 0.002], [0.020, 0.002], [0.020, 0.003],
+                                  [0.001, 0.003]]
+            run(floating)
+
+    def test_the_uniform_grid_cannot_reach_this_configuration(self):
+        """The measurement ADR-026 rests on.
+
+        A 90 µm gap in a 10 mm window is a fraction of a cell at every resolution the mock's
+        schema allows: 512 — its ceiling — is a 59 µm cell, and the gap the whole answer
+        depends on is one and a half of them. The capacitance comes back around half of the
+        measured one, and it stays there.
+        """
+        geometry = self.both_plates()
+        published = 0.031904e-9
+        for resolution in (128, 256):
+            assert self.upstream(geometry, resolution) < 0.6 * published
+
+    def test_and_refining_it_does_not_converge_the_answer(self):
+        """The half that makes it a wrong grid rather than a coarse one — ADR-018's finding,
+        on a different mock and a sharper case.
+
+        Between 128 and 256 the answer does not approach anything: it moves by tens of per
+        cent and not always in the same direction, because what changes with the resolution is
+        whether a grid line happens to fall inside the gap. There is no refinement path along
+        which this sensor stays the same sensor, which is precisely why a benchmark against it
+        would tell the lab's solver nothing.
+        """
+        geometry = self.both_plates()
+        coarse = self.upstream(geometry, 128)
+        finer = self.upstream(geometry, 256)
+        assert abs(finer / coarse - 1.0) > 0.01, "if these agreed, the argument above is wrong"
+
+    def test_where_the_lab_s_own_solver_lands_on_the_same_section(self):
+        """For contrast, and it is the whole of the contrast: the grid is fitted to the
+        geometry, so the gap is resolved across cells at a total cost the mock spends on one
+        of its coarser attempts."""
+        solved = run(self.both_plates()).metrics["capacitance"]
+        assert solved == pytest.approx(0.031904e-9, rel=0.05)

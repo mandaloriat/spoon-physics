@@ -1402,6 +1402,81 @@ symbol wall ADR-021 was built to soften, and the way in sits beside the very lin
 
 ---
 
+## ADR-026 — The sensor gets its own solver although upstream has the physics, and the reason is that a calibration is a curve
+
+**Decision.** `lab.capacitor_axi2d` is the lab's fifth solver, and the first whose
+justification is **not** missing physics. Upstream ships `mock.electrostatics_axi2d` and
+`dolfinx.electrostatics_axi2d`, both on the `axisymmetric2d` kind, both solving the equation
+the capacitive sensor needs. The lab writes its own anyway.
+
+**Why, when ADR-018's rule says use what upstream has.** The rule holds, and it is about
+*physics a metric needs*. What this exercise's metrics need is not physics; it is that there
+are several solves and that they are related to each other. A position sensor is not
+characterised by a capacitance:
+
+- the sensitivity d*C*/d*z* is the **slope** of a curve;
+- the linear half-stroke is how far a straight line stays inside a tolerance **of that curve**;
+- the tilt coefficient is a **quadrature over that curve** — §2's hybrid method, which the
+  thesis reached for after a 3-D attempt failed to resolve the perturbation at a 90 µm gap.
+
+Not one of the three is a reduction of a field, so not one can be declared as a `MetricSpec`
+against any single solve, upstream's or ours. A capability that sweeps is upstream's #48 and
+does not exist yet; until it does, the sweep and the fit over it are the adapter's own work,
+and the adapter doing that work has to own the solve. **This is the first time the lab's
+standing rule has been passed for a reason other than the one it was written about**, and that
+is worth a record rather than a comment.
+
+**The check that was meant to replace the argument, and what happened to it.** The ADR-018 move
+in a case where upstream is right: solve one gap both ways, and let two independent
+discretisations of one problem check each other. This is why the adapter accepts a grounded
+region it has no need for — upstream needs the shell drawn, the lab grounds the floor of the
+window, and a cross-check between two *payloads* would be a comparison of two geometries.
+
+On this configuration it does not survive. The mock rasterises onto a uniform grid over the
+whole window, and the window is 10 mm tall around a 90 µm gap. At 512 — the ceiling its schema
+allows, and 66 seconds of relaxation — the cell is 59 µm, so the gap the entire answer depends
+on is one and a half of them. The capacitance comes back:
+
+| resolution | 128 | 160 | 224 | 256 | 320 | 512 |
+|---|---|---|---|---|---|---|
+| *C* (nF) | 0.0137 | 0.0159 | 0.0125 | 0.0140 | 0.0171 | 0.0178 |
+
+against a measured 0.0319 nF. Not merely low: **not monotone**, because what changes with the
+resolution is whether a grid line happens to fall inside the gap. There is no refinement path
+along which this sensor stays the same sensor — ADR-018's finding exactly, on a different mock
+and a sharper case. `tests/test_capacitor_solver.py::TestAgainstTheUpstreamAdapter` keeps the
+measurement, at two resolutions rather than six so the suite stays quick.
+
+Two things are worth being fair about. The mock does not claim otherwise: it says it is a
+development stand-in and that a staircased electrode edge is its accuracy limit. And
+`dolfinx.electrostatics_axi2d` meshes the outline and would presumably not have this problem —
+it is not installed in this deployment, which is its own kind of answer. What makes the gap
+worth reporting upstream rather than working around quietly is that the `axisymmetric2d`
+docstring names *this sensor* as the case the geometry kind was added for.
+
+**Where the lab's own solver is different, and it is not a refinement.** The electrode is
+**excluded from the domain**, and every face between the free cells and the metal is a
+Dirichlet face at the electrode's potential. Pinning the cells *inside* the metal — which is
+what a rasteriser does — puts the conductor's surface half a cell in. On most sections that is
+an error which refines away. Not on this one: the metal is 4 mm thick, carries no field and is
+therefore divided coarsely, while the gap the answer depends on is 90 µm. The lab's own first
+attempt did exactly this and returned a capacitance **four times too small**, with a consistent
+linear system, both capacitance routes agreeing to five significant figures, and a
+machine-precision residual. A wrong number, not an error. What caught it was §8's benchmark
+against the 2015 measurement — which is the argument for having an external check at all, made
+by the check paying for itself on its first run.
+
+**Cost.** A fifth solver to maintain, and a second grid builder that does what
+`heatsink.grid_lines` does with a graded far field bolted on. And one genuinely new liability:
+the adapter's cost is a *multiple* of one section's cells, because a calibration is several
+solves. The lab's budget is 200 000 cells, so the shipped defaults are sized against it and a
+test asserts every shipped example fits. That turned out to be nearly free — the grid carries a
+line on every edge the geometry has, so the capacitance moves two parts in a thousand across
+the solver's entire resolution range, and what the budget actually buys is gaps rather than
+cells.
+
+---
+
 ## Deferred
 
 Not built, on purpose. Each would have been a plausible use of the kickstart's time; none
@@ -1411,7 +1486,7 @@ would have made the one finished experiment better.
 |---|---|
 | **A network geometry kind** | [ADR-019](#adr-019--the-bridge-carries-its-lattice-in-params-because-the-protocol-has-no-network-geometry) records why the bridge's lattice travels as params: `domain2d` and `regions2d` cannot express joints and bars, and the refusal that blocks the nearest attempt (partially overlapping regions) is correct rather than a bug to route around. Belongs upstream, as a third member of the `Geometry` union with the boundary selectors it would need. What would bring it back here is that kind existing; the lab would then delete a params model and an editor rather than build anything. |
 | **The heat-sink experiment** | `mock.heat2d` exists upstream, takes `regions2d`, and carries its convective boundary condition as parameters (`h`, `t_ambient`) rather than needing anything of the geometry schema — so the machinery is ready and what is missing is the didactic half: a fin generator, and the lesson that makes "how many fins actually help" answerable. It would also ship with only the fast preview, since upstream has no FEniCSx heat adapter to pair with it. The homepage lists it as planned rather than pretending. (The solenoid was in this row until ADR-012.) |
-| ~~**A lab-specific solver**~~ | *No longer deferred.* It was, on the grounds that nothing the airfoil needed was missing from Fenix Spoon — which stopped being true the moment the pages became exercises. `lab.airfoil_panel2d` landed with [ADR-014](#adr-014--the-airfoil-exercise-ships-ideal-flow-with-a-kutta-condition-first), `lab.magnetics2d` with [ADR-018](#adr-018--the-magnetics-exercise-gets-its-own-solver-and-its-challenge-is-not-a-gap-force) and `lab.truss2d` with [ADR-019](#adr-019--the-bridge-carries-its-lattice-in-params-because-the-protocol-has-no-network-geometry). In all three the missing piece was physics a metric needed, not an adapter to demonstrate. |
+| ~~**A lab-specific solver**~~ | *No longer deferred.* It was, on the grounds that nothing the airfoil needed was missing from Fenix Spoon — which stopped being true the moment the pages became exercises. `lab.airfoil_panel2d` landed with [ADR-014](#adr-014--the-airfoil-exercise-ships-ideal-flow-with-a-kutta-condition-first), `lab.magnetics2d` with [ADR-018](#adr-018--the-magnetics-exercise-gets-its-own-solver-and-its-challenge-is-not-a-gap-force) and `lab.truss2d` with [ADR-019](#adr-019--the-bridge-carries-its-lattice-in-params-because-the-protocol-has-no-network-geometry), `lab.heatsink2d` and `lab.heatsink3d` with [ADR-023](#adr-023--the-heat-sink-gets-a-third-dimension-and-what-it-buys-is-the-spreading-resistance), and `lab.capacitor_axi2d` with [ADR-026](#adr-026--the-sensor-gets-its-own-solver-although-upstream-has-the-physics-and-the-reason-is-that-a-calibration-is-a-curve). In the first five the missing piece was physics a metric needed, not an adapter to demonstrate. The sixth is the exception, and it has a record of its own for exactly that reason: upstream *has* the physics, and what it has no way to express is that the answer is a curve. |
 | **Accounts, quotas per person, an admin dashboard** | Would need an identity provider, which would defeat "open the page and try it". Fenix Spoon supports API keys and per-principal quotas the day this changes. |
 | **Per-IP rate limiting on by default** | Needs a custom Caddy build. Configured and commented in the Caddyfile; see ADR-010. |
 | **Publishing the lab image to GHCR** | The server builds from the checkout, which keeps one source of truth while the project is one person and one machine. A published image matters when a second deployment does. |

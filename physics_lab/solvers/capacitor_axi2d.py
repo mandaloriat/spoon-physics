@@ -29,12 +29,30 @@ Not one of the three is a reduction of a field, so not one of them can be declar
 study abstraction and does not exist yet; until it does, the sweep and the fit over it are the
 adapter's own work, and the adapter that does that work is the one that has to own the solve.
 
-**So the upstream pair is used as a check rather than replaced.** ``docs/exercises/…`` §8's
-first row is the parallel plate, its second is the published measurement, and this adapter adds
-a third of its own kind: a single configuration is exactly what upstream answers well, and
-comparing one gap of our sweep against ``mock.electrostatics_axi2d`` on the same section is a
-cross-check between two independent discretisations of one problem. That is the ADR-018 move
-applied to a case where upstream is right — see ADR-025.
+**The upstream pair was then meant to be the check rather than the replacement**, on the
+ADR-018 principle: one configuration is what a single-solve adapter answers well, so comparing
+one gap of our sweep against ``mock.electrostatics_axi2d`` on the same section would be two
+independent discretisations of one problem. That is why :func:`_read` accepts a grounded region
+it does not need — a cross-check between two *payloads* is a comparison of two geometries.
+
+It does not survive contact with this configuration, and the measurement is in
+``tests/test_capacitor_solver.py``. The mock rasterises onto a uniform grid over the whole
+window, and this window is 10 mm tall around a 90 µm gap: at 512 — the ceiling its schema
+allows — the cell is 59 µm, so the gap the entire answer depends on is one and a half of them.
+The capacitance comes back **0.0137, 0.0159, 0.0125, 0.0140, 0.0171 and 0.0178 nF** at
+resolutions 128, 160, 224, 256, 320 and 512, against a measured 0.0319. Not merely low: not
+monotone, because what changes with the resolution is whether a grid line happens to fall
+inside the gap. There is no refinement path along which this sensor stays the same sensor —
+ADR-018's finding exactly, on a different mock and a sharper case — and the 512 run costs 66
+seconds to be 44% wrong.
+
+None of which is a fault the mock claims otherwise about: it says it is a development stand-in
+and that a staircased electrode edge is its accuracy limit. It is worth recording because the
+``axisymmetric2d`` docstring names *this sensor* as the case the geometry kind was added for,
+so the gap between what the kind was added for and what the shipped mock can do with it is
+worth an upstream issue rather than a silent local workaround. ``dolfinx.electrostatics_axi2d``
+meshes the outline and would presumably not have this problem; it is not installed in this
+deployment, which is its own kind of answer. See ADR-026.
 
 The one thing this discretisation does differently, and it is not a refinement
 -----------------------------------------------------------------------------
@@ -483,7 +501,7 @@ class CapacitorAxi2D(Solver):
         estimate that quoted the latter would let a twenty-five sample run through a budget
         sized for one.
         """
-        electrode, gap = _read(geometry)
+        electrode, gap, _floor = _read(geometry)
         numerics = _numerics(params)
         conditions = _conditions(params, gap)
         total = 0
@@ -507,7 +525,7 @@ class CapacitorAxi2D(Solver):
     def solve(
         self, geometry: Axisymmetric2D, params: "CapacitorAxi2D.Params", ctx: SolverContext
     ) -> SolverResult:
-        electrode, gap = _read(geometry)
+        electrode, gap, floor = _read(geometry)
         numerics = _numerics(params)
         conditions = _conditions(params, gap)
         total = params.samples + (2 if params.convergence_check else 1)
@@ -546,7 +564,7 @@ class CapacitorAxi2D(Solver):
             )
 
         ctx.progress(ProgressEvent(iteration=total, total=total, message="sampling the field"))
-        data, cells = _emit(nominal, geometry, params)
+        data, cells = _emit(nominal, floor, params)
 
         metrics = {
             "capacitance": calibration.metrics["c0"],
@@ -586,24 +604,57 @@ class CapacitorAxi2D(Solver):
 # ----------------------------------------------------------------------------- the machinery
 
 
-def _read(geometry: Axisymmetric2D) -> tuple[Electrode, float]:
-    """The electrode and its gap, out of the section.
+def _read(geometry: Axisymmetric2D) -> tuple[Electrode, float, float]:
+    """The electrode, its gap, and where the facing plate is. Returns ``(electrode, gap, floor)``.
 
-    Exactly one region may carry a ``voltage``: this capability models *one* electrode facing
-    the shell's coating, and a section with two of them is a different problem — a guard ring,
-    or two sensors — that this solver would answer by silently ignoring one.
+    Exactly one region may be *live*: this capability models one electrode over the shell, and
+    a section with two driven conductors is a different problem — a guard ring, or two sensors
+    — that this solver would answer by silently ignoring one of them.
+
+    **A grounded region is read as the shell, and that is what makes this comparable with
+    upstream.** Both upstream electrostatics adapters need the facing plate drawn: they pin
+    what the section says is metal and nothing else, so a payload that leaves the shell out
+    has one electrode and no capacitance. This solver's own convention is that the floor of
+    the window *is* the coating, which needs no region at all — and if the two conventions
+    disagreed about what a payload meant, no configuration could be sent to both, and §8's
+    cross-check against ``mock.electrostatics_axi2d`` would be comparing two geometries rather
+    than two discretisations. So a grounded region is accepted and its **top face** becomes
+    the floor: one section, read the same way twice.
+
+    A grounded region that does not reach the bottom of the window is refused. It would be a
+    conductor floating in the gap, and this solver has nowhere to put one — it would be
+    ignored, and the capacitance would come back as though it were not there.
     """
-    live = [region for region in geometry.regions if "voltage" in region.material]
+    live = [r for r in geometry.regions if float(r.material.get("voltage", 0.0)) != 0.0]
+    grounded = [r for r in geometry.regions if "voltage" in r.material and r not in live]
     if len(live) != 1:
         raise ValueError(
             f"this capability models one electrode facing the shell, and the section holds "
-            f"{len(live)} regions with a `voltage`. One region carries the electrode; the "
-            "facing plate is the bottom of the window and is held at zero. A driven guard "
-            "ring is a different problem, and this solver would answer it by ignoring a "
-            "conductor rather than by failing"
+            f"{len(live)} regions at a voltage other than zero. One region carries the "
+            "electrode; the facing plate is either drawn as a region at zero volts or left "
+            "out, in which case the floor of the window is the coating. A driven guard ring "
+            "is a different problem, and this solver would answer it by ignoring a conductor "
+            "rather than by failing"
         )
-    points = np.asarray(live[0].shape.points, dtype=float)
-    return exercise.read_electrode(points, float(geometry.bounds[1]))
+
+    floor = float(geometry.bounds[1])
+    for region in grounded:
+        points = np.asarray(region.shape.points, dtype=float)
+        clearance = float(points[:, 1].min()) - floor
+        if clearance > exercise.SAME_EDGE:
+            raise ValueError(
+                f"the grounded region {region.name!r} floats {clearance * 1e6:.1f} µm "
+                "above the bottom of the window. This solver reads a grounded region as the "
+                "shell's coating and grounds everything below its top face; one that does not "
+                "reach the floor is a conductor in the gap, and it would be ignored rather "
+                "than solved"
+            )
+        floor = max(floor, float(points[:, 1].max()))
+
+    electrode, gap = exercise.read_electrode(
+        np.asarray(live[0].shape.points, dtype=float), floor
+    )
+    return electrode, gap, floor
 
 
 def _numerics(params: "CapacitorAxi2D.Params") -> Numerics:
@@ -649,7 +700,7 @@ def _raster_shape(bounds, resolution: int) -> tuple[int, int]:
     return resolution, max(8, round(resolution * lr / lz))
 
 
-def _emit(solution: Solution, geometry: Axisymmetric2D, params: "CapacitorAxi2D.Params"):
+def _emit(solution: Solution, floor: float, params: "CapacitorAxi2D.Params"):
     """The envelope's ``data``, in whichever kind was asked for.
 
     Field names follow upstream's electrostatics adapters — ``V`` and ``E`` — so a page can
@@ -660,11 +711,15 @@ def _emit(solution: Solution, geometry: Axisymmetric2D, params: "CapacitorAxi2D.
     truncation has to. Publishing the caller's bounds over the solver's array would stretch
     the picture onto a window it was not computed on, which is a wrong drawing rather than a
     cropped one.
+
+    ``floor`` is where the shell's surface sits in the *payload's* frame. The solve works in
+    its own, with the ground plane at zero, so it is added back on the way out — otherwise the
+    picture is right and sitting in the wrong place, which is the harder mistake to see.
     """
     if params.output == "mesh2d":
-        return _as_mesh(solution), int(solution.potential.size)
+        return _as_mesh(solution, floor), int(solution.potential.size)
 
-    r_edges, z_edges = solution.r_edges, solution.z_edges
+    r_edges, z_edges = solution.r_edges, solution.z_edges + floor
     nz, nr = _raster_shape(
         (r_edges[0], z_edges[0], r_edges[-1], z_edges[-1]), params.resolution
     )
@@ -672,12 +727,14 @@ def _emit(solution: Solution, geometry: Axisymmetric2D, params: "CapacitorAxi2D.
     z = np.linspace(z_edges[0], z_edges[-1], nz)
 
     def take(values: np.ndarray) -> np.ndarray:
-        return _resample(values, solution.r_centres, solution.z_centres, r, z)
+        return _resample(values, solution.r_centres, solution.z_centres + floor, r, z)
 
     # The metal is a hole in the domain, and it travels as one. `mask` is the protocol's way
     # of saying "no value here"; filling it with the electrode's potential instead would draw
     # a solid block of colour and invite it to be read as field.
-    inside = _resample(solution.held.astype(float), solution.r_centres, solution.z_centres, r, z)
+    inside = _resample(
+        solution.held.astype(float), solution.r_centres, solution.z_centres + floor, r, z
+    )
     return {
         "bounds": [float(r_edges[0]), float(z_edges[0]), float(r_edges[-1]), float(z_edges[-1])],
         "shape": [nz, nr],
@@ -707,14 +764,14 @@ def _resample(
     return out
 
 
-def _as_mesh(solution: Solution) -> dict:
+def _as_mesh(solution: Solution, floor: float) -> dict:
     """The cell centres, triangulated: the discretisation the answer was computed on.
 
     Not the cells as quadrilaterals — ``mesh2d`` carries triangles with one value per node, and
     these values live at cell centres, so the centres are the nodes. The picture is then the
     honest one: fine across the gap, coarse through the metal and out in the truncation.
     """
-    r, z = solution.r_centres, solution.z_centres
+    r, z = solution.r_centres, solution.z_centres + floor
     rr, zz = np.meshgrid(r, z)
     ident = np.arange(rr.size).reshape(rr.shape)
     a, b = ident[:-1, :-1], ident[:-1, 1:]
