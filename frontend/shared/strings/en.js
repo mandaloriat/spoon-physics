@@ -591,6 +591,7 @@ export default {
       chordTitle: 'The chord line, and the quarter chord the moment is taken about',
       stream: 'Free stream',
       streamTitle: 'Direction and speed of the undisturbed flow',
+      streamLabel: 'U∞ {speed} m/s at {alpha}°',
       centre: 'Centre of pressure',
       centreWhy:
         'The normal force is too small to place a centre of pressure: it genuinely runs off to infinity here.',

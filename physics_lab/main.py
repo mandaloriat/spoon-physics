@@ -24,6 +24,8 @@ from fastapi.staticfiles import StaticFiles
 from fenixspoon import __version__ as fenixspoon_version
 from fenixspoon.main import create_app as create_fenixspoon_app
 from fenixspoon.solvers import available_solvers
+from starlette.responses import Response
+from starlette.types import Scope
 
 from . import __version__, settings
 from . import solvers as lab_solvers  # noqa: F401  - importing registers lab adapters
@@ -55,6 +57,34 @@ def _drop_demo_routes(app: FastAPI) -> None:
             continue
         keep.append(route)
     app.router.routes[:] = keep
+
+
+class _RevalidatedStaticFiles(StaticFiles):
+    """``StaticFiles``, with every response marked ``Cache-Control: no-cache``.
+
+    Without the header a browser applies *heuristic* freshness — typically a tenth of the
+    file's age since ``Last-Modified`` — and serves its cached copy without asking. The
+    pages, the stylesheet and the modules are one hand-woven graph with no build step and
+    no versioned filenames, so after a deploy that heuristic hands different visitors
+    different generations of it: yesterday's ``lab.css`` under today's markup, last
+    week's module importing a function that has moved. The older the previous deploy,
+    the longer the mismatch lives — a returning visitor can read a broken page for days
+    while every fresh browser sees a correct one (found the hard way when ADR-025's
+    redesign restyled every page at once).
+
+    ``no-cache`` means "store it, but revalidate before using it" — not "don't cache".
+    Starlette already stamps every file response with ``ETag`` and ``Last-Modified``, so
+    the revalidation is a conditional request answered ``304 Not Modified``: one
+    round-trip per asset, no bytes re-sent, and every visitor is on the deployed
+    generation from their next navigation. The header rides on the 304s as well (they
+    refresh the stored copy's headers), which is what keeps this true for caches that
+    were filled before this class existed.
+    """
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 def create_app() -> FastAPI:
@@ -116,7 +146,7 @@ def create_app() -> FastAPI:
     if frontend.is_dir():
         # Mounted last, at the root, so it catches only what the API did not. `html=True`
         # serves index.html for directory paths, which is what /experiments/airfoil/ needs.
-        app.mount("/", StaticFiles(directory=frontend, html=True), name="lab")
+        app.mount("/", _RevalidatedStaticFiles(directory=frontend, html=True), name="lab")
     else:  # pragma: no cover - a deployment error, not a supported configuration
         log.warning("frontend directory %s not found; serving the API only", frontend)
 

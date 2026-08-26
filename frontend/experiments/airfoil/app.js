@@ -965,7 +965,10 @@ function drawOverlay({ svg, project, layerOn, width, height }) {
         'text',
         { x: start[0], y: start[1] - 10 },
         document.createTextNode(
-          `U∞ ${speed.toFixed(0)} m/s at ${(currentParams().alpha_deg ?? 0).toFixed(1)}°`,
+          t('airfoil.overlays.streamLabel', {
+            speed: speed.toFixed(0),
+            alpha: (currentParams().alpha_deg ?? 0).toFixed(1),
+          }),
         ),
       ),
     );

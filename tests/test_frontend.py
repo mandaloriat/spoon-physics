@@ -254,6 +254,22 @@ def test_static_assets_the_pages_reference_are_reachable(client, path):
     assert response.status_code == 200, f"{path} is referenced by the site but not served"
 
 
+@pytest.mark.parametrize("path", ["/", "/shared/lab.css", "/shared/i18n.js"])
+def test_every_static_response_demands_revalidation(client, path):
+    """Pages, stylesheet and modules alike must say ``Cache-Control: no-cache``.
+
+    Without it a browser applies heuristic freshness and keeps serving whatever generation
+    of the site it happens to hold, so a deploy hands returning visitors a mixture — new
+    markup under last month's stylesheet. The site is one unversioned module graph, so the
+    only safe instruction is "revalidate every time"; the ETag Starlette already sends
+    keeps that to a 304.
+    """
+    response = client.get(path)
+    assert response.headers.get("cache-control") == "no-cache", (
+        f"{path} must be served with Cache-Control: no-cache"
+    )
+
+
 @pytest.mark.parametrize("name", EXPERIMENTS)
 def test_the_import_map_matches_what_is_vendored(client, name):
     """Every experiment's import map targets must resolve, and they need not be the same set.

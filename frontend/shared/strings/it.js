@@ -599,6 +599,7 @@ export default {
       chordTitle: 'La corda, e il quarto di corda rispetto a cui si prende il momento',
       stream: 'Corrente indisturbata',
       streamTitle: 'Direzione e velocità del flusso indisturbato',
+      streamLabel: 'U∞ {speed} m/s a {alpha}°',
       centre: 'Centro di pressione',
       centreWhy:
         'La forza normale è troppo piccola per collocare un centro di pressione: qui va davvero all’infinito.',
