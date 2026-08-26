@@ -167,12 +167,16 @@ be written.
   **[docs/exercises/capacitive-sensor.md](docs/exercises/capacitive-sensor.md)** — the position
   sensor whose calibration curve the mirror's controller runs on — and
   **[docs/exercises/adaptive-mirror.md](docs/exercises/adaptive-mirror.md)**, the mirror itself.
-  Each is blocked on something the toolkit does not have, and on a *different* something, so the
-  two are independent: the sensor wants an axisymmetric geometry kind
-  ([fenix-spoon#100](https://github.com/mandaloriat/fenix-spoon/issues/100)), and the mirror wants
-  a plate element and an eigenvalue solve
+  Each was blocked on something the toolkit did not have, and on a *different* something, which
+  is what made the two independent — and the pin's move to protocol 1.17 opened most of it. The
+  sensor wanted an axisymmetric geometry kind
+  ([fenix-spoon#100](https://github.com/mandaloriat/fenix-spoon/issues/100), closed, landed in
+  1.13) and is **no longer blocked on anything**. The mirror wanted a plate element *and* an
+  eigenvalue solve
   (**[docs/proposals/mindlin-plate-and-modes.md](docs/proposals/mindlin-plate-and-modes.md)**,
-  which argues those are two asks with different owners rather than one).
+  which argues those are two asks with different owners rather than one): the eigensolve arrived
+  in 1.14 ([#101](https://github.com/mandaloriat/fenix-spoon/issues/101), closed), and the plate
+  element — the lab's own to write — is what still stands.
 
 ### A page is a bench
 

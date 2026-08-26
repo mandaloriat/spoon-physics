@@ -261,16 +261,27 @@ workaround, following §6 of the exercise contract. That is stale: Fenix Spoon i
 `metrics` and `diagnostics` landed in 1.3, `provenance` in 1.4, and `series1d` plus the
 `series` list beside a field in 1.5. This exercise returns everything natively.
 
-1. **The `axisymmetric2d` geometry kind.** The weak form itself is one *r* factor in the
-   integrand and lives in the adapter. What is missing is upstream and already *planned*:
-   `axisymmetric2d` is listed among the planned geometry kinds in the wire-protocol reference,
-   and the roadmap deferred the axisymmetric A-φ formulation out of the magnetics work with
-   the note that axisymmetry belongs with that dedicated kind. **This exercise is the case
-   that asks for it**, and it now does so on the record:
-   [fenix-spoon#100](https://github.com/mandaloriat/fenix-spoon/issues/100) carries this
-   exercise as the motivating case, with the deferred A-φ magnetostatics as the second
-   consumer. A caller has to be able to tell a meridian section from a plane slice. The lab can
-   ship against `domain2d` plus a local convention in the interim; it should not do that twice.
+1. ~~**The `axisymmetric2d` geometry kind.**~~ **Arrived.** This was the one thing blocking the
+   exercise, and it stopped being true when the lab moved its pin to protocol 1.17:
+   `axisymmetric2d` landed in **1.13**, and [fenix-spoon#100](https://github.com/mandaloriat/fenix-spoon/issues/100)
+   — which carried *this exercise* as its motivating case — is closed. The kind is in the
+   checkout the lab runs today. Nothing here waits on anything.
+
+   **And upstream shipped more than the kind, which changes a question this section had not
+   thought to ask.** There is an adapter pair, `mock.electrostatics_axi2d` and its FEniCSx
+   twin, and its own source names this exercise as the case it was written for — *"a region
+   with a `voltage` material key is an electrode … this is how the capacitive sensor is
+   written"*. So "does the lab write a solver for this?" is now a real question rather than a
+   formality, and it is answered against the standing rule
+   ([ADR-014](../architecture-decisions.md#adr-014--the-airfoil-exercise-ships-ideal-flow-with-a-kutta-condition-first),
+   [ADR-018](../architecture-decisions.md#adr-018--the-magnetics-exercise-gets-its-own-solver-and-its-challenge-is-not-a-gap-force),
+   [ADR-019](../architecture-decisions.md#adr-019--the-bridge-carries-its-lattice-in-params-because-the-protocol-has-no-network-geometry)):
+   *only when the physics a metric needs is missing*. Upstream declares one of §7's seven
+   metrics. Five of the other six are a **sweep** of dozens of configurations with a fit over
+   them — §2's hybrid method, which is the exercise — and the seventh is *C* by the surface-charge
+   route, which is the second, independent path that makes §8's consistency row possible and
+   which upstream does not compute. That is the answer, and the cross-check against the
+   upstream pair on a single configuration is a stronger position than either alone.
 2. **Nothing for the curves.** *C*(*z*) over a swept gap goes back as a `series1d` result
    when the sweep is the answer, or in the `series` list beside a field result when it
    accompanies one. Both exist ([#46](https://github.com/mandaloriat/fenix-spoon/issues/46),
