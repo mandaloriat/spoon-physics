@@ -158,6 +158,22 @@ class TestTheGridAndTheAxis:
         for wanted in (0.0, NOMINAL_GAP, NOMINAL_GAP + electrode.thickness):
             assert np.min(np.abs(z_edges - wanted)) < 1e-12
 
+    def test_no_gap_leaves_a_cell_of_zero_height(self):
+        """The 140 µm regression, and the reason :func:`capacitor._merged` exists.
+
+        The electrode's top face is a line two sources arrive at independently, and at this gap
+        they landed 0.9 picometres apart instead of on top of each other. The cell between them
+        was 0.9 pm tall; its conductance dominated the operator; CG stopped after two iterations
+        with a machine-precision residual and a capacitance an order of magnitude high. Swept,
+        the sequence was eight clean points and one absurd one — which is the only way it was
+        ever going to be noticed, so the sweep is what this test stands in for.
+        """
+        electrode = capacitor.Electrode()
+        for gap in np.linspace(40e-6, 200e-6, 33):
+            r_edges, z_edges = capacitor.build_grid(electrode, float(gap), COARSE)
+            assert np.diff(r_edges).min() > capacitor.COINCIDENT
+            assert np.diff(z_edges).min() > 1e-6, f"a runt cell at a gap of {gap * 1e6:.1f} µm"
+
     def test_the_field_is_finite_everywhere(self, nominal):
         assert np.all(np.isfinite(nominal.field))
         assert np.all(np.isfinite(nominal.potential))

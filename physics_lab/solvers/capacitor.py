@@ -41,6 +41,11 @@ import numpy as np
 #: Vacuum permittivity, F/m.
 EPS0 = 8.8541878128e-12
 
+#: Grid lines nearer than this, in metres, are the same line arrived at two ways. Fifteen
+#: picometres is a hundredth of an atom and a millionth of the finest cell this solver builds,
+#: so nothing the geometry can express falls through it. See :func:`_merged` for what does.
+COINCIDENT = 1.5e-11
+
 
 @dataclass(frozen=True)
 class Electrode:
@@ -176,6 +181,30 @@ def _graded(start: float, stop: float, first: float, growth: float) -> np.ndarra
     return np.array(lines, dtype=float)
 
 
+def _merged(*sources: np.ndarray) -> np.ndarray:
+    """Grid lines from several sources as one ordered set, with coincident lines coincident.
+
+    ``np.unique`` is not enough here, and the failure it lets through is expensive. The three
+    sources below meet at shared values — the electrode's top face is where the coarse interior
+    stops and the graded far field starts — and each arrives at that value by its own
+    arithmetic: :func:`~physics_lab.solvers.heatsink.grid_lines` rounds its anchors to a
+    picometre, ``_graded`` carries the raw float. At most gaps the two agree bit for bit and
+    ``unique`` collapses them; at 140 µm they landed 0.9 picometres apart and survived as two
+    lines, leaving a cell 0.9 pm tall between two cells a millimetre tall. The solve does not
+    complain — a conductance seven orders of magnitude out of scale simply dominates the
+    operator, CG "converges" in two iterations, and the capacitance comes back an order of
+    magnitude high. It cost a sweep to notice, because eight of the nine gaps were right.
+
+    So lines closer together than :data:`COINCIDENT` are one line. The survivor is the lower of
+    the pair: at that separation the choice is a rounding of the geometry far below any length
+    the section has, and what matters is only that one of them goes.
+    """
+    ordered = np.sort(np.concatenate([np.asarray(s, dtype=float).ravel() for s in sources]))
+    keep = np.ones(ordered.shape, dtype=bool)
+    keep[1:] = np.diff(ordered) > COINCIDENT
+    return ordered[keep]
+
+
 def build_grid(
     electrode: Electrode, gap: float, numerics: Numerics
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -200,44 +229,35 @@ def build_grid(
     inner = electrode.inner_radius - electrode.chamfer_width
     outer = electrode.outer_radius + electrode.chamfer_width
 
-    r_edges = np.unique(
-        np.concatenate(
+    r_edges = _merged(
+        # Grown from the electrode inwards and then read back, so the small cells sit against
+        # the rim rather than out at the truncation edge where nothing happens. Clamped at the
+        # axis: a negative radius is not a domain a body of revolution has, and
+        # `axisymmetric2d` refuses one — correctly, since a payload with one was authored as a
+        # plane section and mislabelled.
+        np.maximum(
+            inner - _graded(0.0, min(reach, inner), numerics.cell_size, numerics.growth), 0.0
+        ),
+        grid_lines(
             [
-                # Grown from the electrode inwards and then read back, so the small cells sit
-                # against the rim rather than out at the truncation edge where nothing happens.
-                # Clamped at the axis: a negative radius is not a domain a body of revolution
-                # has, and `axisymmetric2d` refuses one — correctly, since a payload with one
-                # was authored as a plane section and mislabelled.
-                np.maximum(
-                    inner - _graded(0.0, min(reach, inner), numerics.cell_size, numerics.growth),
-                    0.0,
-                ),
-                grid_lines(
-                    [
-                        inner,
-                        electrode.inner_radius,
-                        electrode.inner_radius + electrode.chamfer_width,
-                        electrode.outer_radius - electrode.chamfer_width,
-                        electrode.outer_radius,
-                        outer,
-                    ],
-                    numerics.cell_size,
-                ),
-                _graded(outer, outer + reach, numerics.cell_size, numerics.growth),
-            ]
-        )
+                inner,
+                electrode.inner_radius,
+                electrode.inner_radius + electrode.chamfer_width,
+                electrode.outer_radius - electrode.chamfer_width,
+                electrode.outer_radius,
+                outer,
+            ],
+            numerics.cell_size,
+        ),
+        _graded(outer, outer + reach, numerics.cell_size, numerics.growth),
     )
 
     top = gap + electrode.thickness
     coarse = max(electrode.thickness / max(numerics.thickness_cells, 1), numerics.cell_size)
-    z_edges = np.unique(
-        np.concatenate(
-            [
-                grid_lines([0.0, gap, gap + electrode.chamfer_height], numerics.cell_size),
-                grid_lines([gap + electrode.chamfer_height, top], coarse),
-                _graded(top, top + reach, coarse, numerics.growth),
-            ]
-        )
+    z_edges = _merged(
+        grid_lines([0.0, gap, gap + electrode.chamfer_height], numerics.cell_size),
+        grid_lines([gap + electrode.chamfer_height, top], coarse),
+        _graded(top, top + reach, coarse, numerics.growth),
     )
     return r_edges, z_edges
 
