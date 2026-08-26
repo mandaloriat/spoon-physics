@@ -104,6 +104,8 @@ jobs:
           # The bridge and the heat sink were missing from this list from the release that
           # built them until ADR-022 — which is exactly the failure the sentence above warns
           # about, arriving by the other door: the list is only explicit if somebody extends it.
+          # Extending it is therefore part of adding a page, the way `scripts/check-i18n.mjs`
+          # and `tests/test_frontend.py` both carry a list that has to be extended by hand.
           DISCLAIMER_FILES = [
               "README.md",
               "frontend/index.html",
@@ -111,6 +113,7 @@ jobs:
               "frontend/experiments/solenoid/index.html",
               "frontend/experiments/truss/index.html",
               "frontend/experiments/heatsink/index.html",
+              "frontend/experiments/sensor/index.html",
           ]
 
           def rendered(path: str) -> str:
