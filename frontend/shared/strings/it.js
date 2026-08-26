@@ -1155,6 +1155,12 @@ export default {
     model: {
       section: 'La sezione trasversale',
       solid: 'Il corpo intero',
+      attemptSection:
+        'Letto sulla sezione trasversale, che assume il componente scaldi la base in modo uniforme su tutta la lunghezza.',
+      attemptSolid:
+        "Letto sul corpo intero. La sezione trasversale avrebbe messo la resistenza a {extruded} K/W contro {solid} — stesso dissipatore, un'ipotesi in meno.",
+      attemptSolidAlone:
+        'Letto sul corpo intero, senza una run sulla sezione con cui confrontarlo.',
       sectionNote:
         "Si assume che il componente scaldi la base uniformemente su tutta la lunghezza. Esatto per la conduzione, ed è l'ipotesi che un componente reale rompe.",
       solidNote:

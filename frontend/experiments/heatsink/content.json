@@ -134,6 +134,16 @@
       ]
     },
     {
+      "id": "depth",
+      "heading": "The length the section could not see",
+      "body": [
+        "The cross-section is exact for an extrusion — a prismatic body has no third-dimension conduction to neglect — and it assumes one thing that is not about conduction at all: that the device warms the base evenly along the whole length. A 30 mm die on a 60 mm extrusion does not. The heat has to run sideways along the base to reach the far fins, and that run costs a temperature drop the section has nowhere to put. That drop is the **spreading resistance**.",
+        "Solve the body instead and two things appear at once, pulling opposite ways. The spreading costs temperature. The two cut ends are surface the section never had, and they give some of it back. On a 60 mm extrusion in aluminium the two very nearly cancel, which is how the cross-section has been getting away with it — stretch the same device to a 200 mm extrusion and the spreading wins by about a seventh.",
+        "So the page reports both terms and not only their difference. A single net number a few per cent wide would read as *the third dimension does not matter here*, when what is true is that two effects of a few per cent happened to cancel.",
+        "**Where to look.** Cut the solid through its base rather than across it. The colours along the length are the spreading resistance seen directly — hot under the device, cooler towards the ends — and the distance between those two colours is what the cross-section reported as one number and could not show you."
+      ]
+    },
+    {
       "id": "conditions",
       "heading": "Boundary conditions",
       "lead": "Where the heat enters, where it leaves, and what is assumed about the mounting.",
@@ -160,7 +170,7 @@
       "body": [
         "**No transient.** Every temperature here is the equilibrium the device settles at, reached after a time this model cannot tell you. Sizing for a duty cycle is a different problem.",
         "**No flow field.** No velocity, no buoyancy plume, no fin-to-fin interference beyond what the correlation carries, and no way for the correlation to know it has been asked about a geometry nobody fitted it over.",
-        "**No spreading resistance.** The device is assumed to warm the base evenly along the extrusion. A small device on a wide base does not, and that is the natural second version of this page.",
+        "**Spreading resistance, only if you ask for it.** The cross-section assumes the device warms the base evenly along the extrusion; a small device does not, and the difference is a real temperature. That limit belongs to the *model* rather than to the exercise — solve the whole body and it is computed instead of assumed away. What neither model has is a contact resistance between the device and the base, which on a real mounting is not small.",
         "**Grey and diffuse surfaces.** One emissivity at all wavelengths and all angles, with no dependence on temperature or on how thick the anodising is — which in practice varies more than a single number suggests.",
         "The convection correlations are Bar-Cohen and Rohsenow's composite relation for vertical parallel plates, McAdams' laminar plate result where there is no channel, and the standard laminar results in forced flow; the emissivities are nominal values for aluminium finishes from Touloukian and DeWitt. Every one of them is cited in the solver source. Real surfaces spread around a nominal emissivity, and a correlation fitted over one range says so when it is asked outside it — what does not depend on either is the *shape* of the answer: that both heat paths weaken as the channel narrows, and that an optimum therefore exists."
       ],

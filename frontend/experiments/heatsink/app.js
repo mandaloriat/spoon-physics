@@ -1092,6 +1092,7 @@ let planeTimer = 0;
 
 function present() {
   renderChallenge(dom.challenge, content?.challenge, report, METRIC_LABELS);
+  renderAttemptModel();
   renderKpis(dom.kpis, KPIS, report);
   renderMetrics(dom.metrics, METRICS, report);
   renderVerification(dom.verification, CHECKS, report);
@@ -1109,6 +1110,39 @@ function present() {
   if (report) path.mark('attempt');
 
   drawSweep();
+}
+
+/**
+ * Which of the two models produced the numbers just judged against the targets.
+ *
+ * **This is not decoration, and it is the one thing the second solver made necessary.** The
+ * challenge reads `t_max` against 95 °C and does not know, because nothing in the envelope
+ * says, whether it is reading the cross-section's answer or the body's. Those differ by a few
+ * per cent on the same sink — enough to move an attempt across the line — so an attempt that
+ * did not say which model made it would be a pass or a fail with a hidden argument in it.
+ *
+ * On a solid run the sentence carries the comparison rather than an assertion, because the
+ * solver publishes both numbers: what the body found, and what the cross-section would have
+ * said about the same sink on the same in-plane grid. Neither is derived here — a page that
+ * computed a headline from two published metrics would be making a claim of its own, which is
+ * the line §8 of the contract draws.
+ */
+function renderAttemptModel() {
+  const existing = document.getElementById('attempt-model');
+  existing?.remove();
+  if (!report) return;
+
+  const extruded = report.metrics?.thermal_resistance_extruded;
+  const solved = report.metrics?.thermal_resistance;
+  const text = report.solid
+    ? Number.isFinite(extruded) && Number.isFinite(solved)
+      ? t('heatsink.model.attemptSolid', {
+          extruded: num(extruded, { maximumFractionDigits: 3 }),
+          solid: num(solved, { maximumFractionDigits: 3 }),
+        })
+      : t('heatsink.model.attemptSolidAlone')
+    : t('heatsink.model.attemptSection');
+  dom.challenge.append(el('p', { class: 'challenge__model', id: 'attempt-model', text }));
 }
 
 function drawSweep() {
@@ -1192,10 +1226,16 @@ function row() {
       fin_height_m: mm(shape.finHeight),
       channel_width_m: mm(channelWidth()),
       depth_m: mm(shape.depth),
-      // Only meaningful for a solid run, and null rather than absent when it is not: a column
-      // that is sometimes missing and sometimes zero cannot be compared down a table.
-      footprint_depth_m: isSolid() ? mm(shape.footprintDepth) : null,
-      kind: isSolid() ? 'regions3d' : 'regions2d',
+      // Always a number, and for the cross-section it is the whole length — which is not a
+      // convenient fiction but exactly what that model assumes. `changedTheDesign` compares
+      // this block to decide whether a kept attempt is a *second design*, and switching model
+      // is not one: it is the same sink asked a different question. A field that went null
+      // when the model changed would have marked the journey's "improve" step for a click
+      // that improved nothing.
+      //
+      // Which model ran is recorded, and it is recorded under `solver` where it belongs —
+      // the geometry kind is a property of the capability, not of the sink.
+      footprint_depth_m: isSolid() ? mm(shape.footprintDepth) : mm(shape.depth),
     },
     physical: {
       power_w: shape.power,
