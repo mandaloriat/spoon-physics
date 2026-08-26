@@ -218,6 +218,64 @@ class TestWhatComesBack:
         spacings = np.unique(np.round(np.diff(np.unique(points[:, 0])), 12))
         assert spacings.size > 1, "a graded grid has more than one cell size in it"
 
+    def test_the_four_checks_come_back_as_declared_numbers(self, result):
+        """§8's rows, in the envelope rather than in a `report.json` — the direction ADR-015
+        records, and the reason this exercise ships no artifact at all.
+
+        The gate the challenge names is `energy_charge_consistency_rel`, and the page reads it
+        from here rather than dividing two capacitances of its own: a page that computed its
+        own verification would be making a claim, which is the line §8 of the contract draws.
+        """
+        for key in (
+            "energy_charge_consistency_rel",
+            "fit_residual_rel",
+            "benchmark_rel",
+            "tilt_benchmark_rel",
+        ):
+            assert key in result.metrics, key
+            assert result.metrics[key] >= 0.0
+        assert result.metrics["energy_charge_consistency_rel"] < 0.01, "§8's 1% gate"
+        assert result.metrics["benchmark_rel"] < 0.06
+
+    def test_the_consistency_check_is_the_two_capacitances(self, result):
+        """A guard on the number above rather than on the solver: it has to be the gap between
+        the two routes this run actually reported, or the challenge is gated on something the
+        visitor cannot see."""
+        gap = abs(
+            result.metrics["capacitance"] / result.metrics["capacitance_charge"] - 1.0
+        )
+        assert result.metrics["energy_charge_consistency_rel"] == pytest.approx(gap, abs=1e-9)
+
+    def test_the_peak_field_comes_from_the_solve_and_not_from_the_picture(self, result):
+        """The declared `field`/`reduction` path would reduce the field that *travels back*,
+        which is a uniform resampling of a window several annulus widths across — and the gap
+        the peak lives in is a fraction of one of its cells. Reduced that way it came out
+        4710 V/m against a true 11111: not a coarse answer, a different one, with nothing on
+        the result to say so. So the adapter supplies it.
+
+        The value itself is only bounded, not pinned: it does not converge — see the next
+        test — so a tight assertion here would be an assertion about one cell size.
+        """
+        gap_field = 1.0 / 90e-6
+        assert 0.7 * gap_field < result.metrics["e_max"] < 3.0 * gap_field
+        raster = np.array(result.data["fields"]["E"])
+        assert result.metrics["e_max"] > raster.max(), (
+            "if the raster could reach the peak, this metric would not need supplying"
+        )
+
+    def test_and_refining_the_grid_raises_it_rather_than_settling_it(self):
+        """The caveat the metric's own description carries, asserted rather than written.
+
+        The electrode's two bottom edges are right angles facing the gap, and a right angle has
+        an unbounded field in the continuum. A coarse grid cannot see it and reports the gap
+        field V/d; every refinement gets nearer the singularity. A reader who takes `e_max` for
+        a converged quantity is reading the sharpness of a corner as a property of the design,
+        which is the same mistake `b_section_max` exists to prevent on the magnetics page.
+        """
+        coarse = run(section(), cell_size=4e-5)
+        fine = run(section(), cell_size=1.5e-5)
+        assert fine.metrics["e_max"] > 1.05 * coarse.metrics["e_max"]
+
     def test_the_solve_reports_how_it_went(self, result):
         assert result.converged is True
         assert result.residual is not None and result.residual < 1e-10

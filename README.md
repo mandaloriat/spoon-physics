@@ -138,8 +138,8 @@ be written.
   that would yield it. It is also the exercise that found the edge of the geometry schema: a
   bar network is neither of the two kinds the protocol has
   ([ADR-019](docs/architecture-decisions.md#adr-019--the-bridge-carries-its-lattice-in-params-because-the-protocol-has-no-network-geometry)).
-- **[docs/exercises/heat-sink.md](docs/exercises/heat-sink.md)** — specified, not built, and the
-  only one waiting on nothing upstream. Writing it turned up two reasons the upstream demo is not
+- **[docs/exercises/heat-sink.md](docs/exercises/heat-sink.md)** — ~~specified, not built~~
+  **built**, and it was the one waiting on nothing upstream. Writing it turned up two reasons the upstream demo is not
   yet a lesson, and both are about the boundary rather than the solve. The convection coefficient
   is a constant — the solver says so, and excludes fin-to-fin interference by name — so with `h`
   fixed, thermal resistance falls monotonically with fin count and the model claims more fins are
@@ -162,17 +162,30 @@ be written.
   12% at the optimum and 57% past it. And the two mechanisms turn out to **fight each other** —
   fins added to help convection suppress radiation — so anodising is worth 36% of the rise on a
   plate and 8% on a tightly finned sink. The first draft quoted the flattering number for both.
-- Two more, **specified and not built**, both drawn from the `P45` archive and a 2015 thesis on
-  the servoelastic analysis of an adaptive mirror:
-  **[docs/exercises/capacitive-sensor.md](docs/exercises/capacitive-sensor.md)** — the position
-  sensor whose calibration curve the mirror's controller runs on — and
+- **[docs/exercises/capacitive-sensor.md](docs/exercises/capacitive-sensor.md)** — **built**.
+  The position sensor whose calibration curve the mirror's controller runs on: an annular
+  electrode 90 micrometres from a mirror, and the first exercise here whose *answer is a curve*.
+  Sensitivity is a slope, the usable stroke is a tolerance on a straight line through it, and
+  the tilt cross-sensitivity is a quadrature over it — so one press is a sweep of gaps and a fit,
+  and none of the three is a reduction of any single field. That is also why the lab wrote a
+  solver where upstream ships two adapters for this very geometry kind
+  ([ADR-026](docs/architecture-decisions.md#adr-026--the-sensor-gets-its-own-solver-although-upstream-has-the-physics-and-the-reason-is-that-a-calibration-is-a-curve)).
+
+  It is the one page here checked against a number this project did not produce: a measurement
+  published in 2015. That check paid for itself on its first run, catching a capacitance four
+  times too small that had a consistent linear system, two agreeing routes and a
+  machine-precision residual behind it. It also settled a question the source leaves open —
+  the printed tilt coefficient is per *degree* squared, by a factor of three thousand — and it
+  turned up that upstream's `mock.electrostatics_axi2d` cannot reach this configuration at all:
+  on a 90 µm gap in a 10 mm window its capacitance is about half the measured one and is not
+  monotone in resolution.
+- One more, **specified and not built**, from the same `P45` archive and 2015 thesis:
   **[docs/exercises/adaptive-mirror.md](docs/exercises/adaptive-mirror.md)**, the mirror itself.
-  Each was blocked on something the toolkit did not have, and on a *different* something, which
-  is what made the two independent — and the pin's move to protocol 1.17 opened most of it. The
-  sensor wanted an axisymmetric geometry kind
+  It and the sensor were each blocked on something the toolkit did not have, and on a
+  *different* something, which is what made the two independent — and the pin's move to protocol
+  1.17 opened both. The sensor wanted an axisymmetric geometry kind
   ([fenix-spoon#100](https://github.com/mandaloriat/fenix-spoon/issues/100), closed, landed in
-  1.13) and is **no longer blocked on anything**. The mirror wanted a plate element *and* an
-  eigenvalue solve
+  1.13). The mirror wanted a plate element *and* an eigenvalue solve
   (**[docs/proposals/mindlin-plate-and-modes.md](docs/proposals/mindlin-plate-and-modes.md)**,
   which argues those are two asks with different owners rather than one): the eigensolve arrived
   in 1.14 ([#101](https://github.com/mandaloriat/fenix-spoon/issues/101), closed), and the plate

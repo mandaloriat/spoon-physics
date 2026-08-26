@@ -41,7 +41,7 @@ test('the homepage leads with the problems, and shows a real field for each', as
   );
 
   // Every challenge is reachable from the homepage as a full-cell link.
-  for (const experiment of ['airfoil', 'truss', 'heatsink']) {
+  for (const experiment of ['airfoil', 'truss', 'heatsink', 'sensor']) {
     await expect(page.locator(`.challenge[href="/experiments/${experiment}/"]`)).toBeVisible();
   }
   // And the advanced lab is reachable too, from the footer rather than the grid — a page that
@@ -56,7 +56,7 @@ test('the homepage leads with the problems, and shows a real field for each', as
   await expect(page.locator('.challenge h2').first()).toContainText(
     'How much tilt does a wing need?',
   );
-  const quantities = ['80 kg', '2.4 tonnes', '170 g'];
+  const quantities = ['80 kg', '2.4 tonnes', '170 g', 'twenty microns'];
   for (const [index, quantity] of quantities.entries()) {
     const mission = page.locator('.challenge__mission').nth(index);
     await expect(mission).toBeVisible();
@@ -71,7 +71,7 @@ test('the homepage leads with the problems, and shows a real field for each', as
       loaded: img.complete && img.naturalWidth > 0,
     })),
   );
-  expect(shots.length).toBe(4);
+  expect(shots.length).toBe(5);
   for (const shot of shots) {
     expect(shot.src).toMatch(/^\/assets\/thumbnails\//);
     expect(shot.loaded).toBe(true);
@@ -590,7 +590,7 @@ test('no slider combination can build a geometry the protocol would refuse', asy
   }
 });
 
-for (const experiment of ['airfoil', 'solenoid', 'truss', 'heatsink']) {
+for (const experiment of ['airfoil', 'solenoid', 'truss', 'heatsink', 'sensor']) {
   test(`the ${experiment} page offers no Run button until it knows it can solve`, async ({
     page,
   }) => {
@@ -628,7 +628,11 @@ for (const experiment of ['airfoil', 'solenoid', 'truss', 'heatsink']) {
     release();
     // Once both answers are in, the button is offered and the status says so.
     await expect(page.locator('#run')).toBeEnabled();
-    await expect(page.locator('#status')).toContainText(/[Pp]ress Compute/);
+    // Whatever the button on that page says. Every bench's ready line names its own action
+    // — the sensor's is Calibrate, because one press there is a sweep and a fit rather than a
+    // solve — and a status that named a button the page does not have would be worse than one
+    // that named none.
+    await expect(page.locator('#status')).toContainText(/[Pp]ress (Compute|Calibrate)/);
     expect(submissions).toEqual([]);
   });
 

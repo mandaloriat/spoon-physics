@@ -1,6 +1,8 @@
 # Exercise 5 — The capacitive sensor
 
-**Status:** *specified, not built.*
+**Status:** *built.* Solved by `lab.capacitor_axi2d`, on the page at `/experiments/sensor/`.
+The three draft targets in §1 survived contact with the solver unchanged; the second one is the
+design problem, because the P45 sensor as built lands at 9.6 µm against the 10 asked for.
 **Implements:** [the exercise contract](../exercise-contract.md).
 **Contract row:** new. It is not one of the rows [§7](../exercise-contract.md#7-the-exercises)
 was written with, and it is added there by the same change that adds this page.
@@ -257,9 +259,12 @@ The solver is a **lab adapter**, `lab.capacitor_axi2d`, registered in
 `physics_lab/solvers/` beside `lab.magnetics2d`.
 
 **Protocol note.** An earlier draft of this section assumed protocol 1.2 and a `report.json`
-workaround, following §6 of the exercise contract. That is stale: Fenix Spoon is at **1.9**,
+workaround, following §6 of the exercise contract. That is stale: the lab's pin is at **1.17**,
 `metrics` and `diagnostics` landed in 1.3, `provenance` in 1.4, and `series1d` plus the
-`series` list beside a field in 1.5. This exercise returns everything natively.
+`series` list beside a field in 1.5. This exercise returns everything natively and writes no
+artifact at all — the four verification residuals below are declared metrics, which is the
+direction [ADR-015](../architecture-decisions.md#adr-015--the-run-table-lives-in-the-browser-and-fenix-spoon-owns-the-record)
+records.
 
 1. ~~**The `axisymmetric2d` geometry kind.**~~ **Arrived.** This was the one thing blocking the
    exercise, and it stopped being true when the lab moved its pin to protocol 1.17:
@@ -280,11 +285,26 @@ workaround, following §6 of the exercise contract. That is stale: Fenix Spoon i
    metrics. Five of the other six are a **sweep** of dozens of configurations with a fit over
    them — §2's hybrid method, which is the exercise — and the seventh is *C* by the surface-charge
    route, which is the second, independent path that makes §8's consistency row possible and
-   which upstream does not compute. That is the answer, and the cross-check against the
-   upstream pair on a single configuration is a stronger position than either alone.
+   which upstream does not compute. That is the answer, and it is recorded as
+   [ADR-026](../architecture-decisions.md#adr-026--the-sensor-gets-its-own-solver-although-upstream-has-the-physics-and-the-reason-is-that-a-calibration-is-a-curve)
+   — the first time the standing rule has been passed for a reason other than missing physics.
+
+   **The cross-check that was to come with it did not survive the configuration.** The plan was
+   to solve one gap both ways and let two independent discretisations check each other, and it
+   is why the lab's adapter accepts a grounded region it does not need: a cross-check between
+   two *payloads* compares two geometries. On this one, upstream's mock returns 0.0137, 0.0159,
+   0.0125, 0.0140, 0.0171 and 0.0178 nF at resolutions 128 through 512, against a measured
+   0.0319 — half the answer, and not monotone, because it rasterises onto a uniform grid over a
+   10 mm window and what changes with the resolution is whether a grid line falls inside a
+   90 µm gap. Fair to the mock, which says it is a development stand-in and that a staircased
+   electrode edge is its accuracy limit; worth reporting upstream, because the geometry kind's
+   own documentation names *this sensor* as the case it was added for.
 2. **Nothing for the curves.** *C*(*z*) over a swept gap goes back as a `series1d` result
    when the sweep is the answer, or in the `series` list beside a field result when it
    accompanies one. Both exist ([#46](https://github.com/mandaloriat/fenix-spoon/issues/46),
    closed).
-3. **Nothing else.** Steady, linear, scalar, small domain. This is the cheapest exercise the
-   lab has specified, and it is the one with a published answer to check against.
+3. **Nothing else.** Steady, linear, scalar, small domain. This was the cheapest exercise the
+   lab had specified, and it is the one with a published answer to check against. It stayed
+   cheap: a calibration at the shipped defaults is nine solves in about two seconds, and the
+   whole run fits inside the deployment's 200 000-cell budget — which for a sweep is a real
+   constraint rather than a formality, since the cost is nine sections rather than one.

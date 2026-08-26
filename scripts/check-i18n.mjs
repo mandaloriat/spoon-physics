@@ -25,7 +25,7 @@ const FRONTEND = join(ROOT, 'frontend');
    release that built it until ADR-021, so its two content files were the only ones in the lab
    nothing compared — which is the failure mode a checker has: it is silent about what it was
    never told to look at. Adding a page here is part of adding a page. */
-const EXERCISES = ['airfoil', 'solenoid', 'truss', 'heatsink'];
+const EXERCISES = ['airfoil', 'solenoid', 'truss', 'heatsink', 'sensor'];
 
 const problems = [];
 const fail = (message) => problems.push(message);

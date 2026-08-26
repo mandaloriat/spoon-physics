@@ -15,7 +15,7 @@ FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 
 #: Every experiment's directory. A page added here without its assets being reachable is the
 #: failure this module exists to catch.
-EXPERIMENTS = ["airfoil", "solenoid", "truss", "heatsink"]
+EXPERIMENTS = ["airfoil", "solenoid", "truss", "heatsink", "sensor"]
 
 PAGES = ["/", *(f"/experiments/{name}/" for name in EXPERIMENTS)]
 
@@ -39,7 +39,7 @@ def test_pages_are_served(client, path):
 #: URL, but its mission is a flux in Wb/m on an ampere-turn budget — no outcome a student can
 #: picture and no trade-off they can feel — so it sits on the advanced shelf until the
 #: electromagnet that replaces it exists. See ADR-022.
-CHALLENGES = ["airfoil", "truss", "heatsink"]
+CHALLENGES = ["airfoil", "truss", "heatsink", "sensor"]
 
 
 def test_homepage_names_the_experiments_and_carries_the_disclaimer(client):
@@ -368,7 +368,7 @@ def test_every_challenge_is_stated_twice_in_two_registers(client, name, suffix):
 #: prediction is asked inline at the first Compute — above the action bar rather than above
 #: the bench — and the instrument grid is `.bench__main`. The others keep ADR-022's order
 #: until they migrate; a migrated page moves from one set to the other, deliberately.
-REDESIGNED = {"airfoil"}
+REDESIGNED = {"airfoil", "sensor"}
 
 
 @pytest.mark.parametrize("name", EXPERIMENTS)
@@ -558,6 +558,7 @@ MISSION_SOLVER = {
     "solenoid": "lab.magnetics2d",
     "truss": "lab.truss2d",
     "heatsink": "lab.heatsink2d",
+    "sensor": "lab.capacitor_axi2d",
 }
 
 

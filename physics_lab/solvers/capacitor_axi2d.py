@@ -193,12 +193,63 @@ SENSOR_METRICS = [
         name="e_max",
         unit="V/m",
         description=(
-            "Peak field magnitude in the section, upstream's metric of the same name. Read it "
-            "at the chamfer with suspicion: a corner has an unbounded field in the continuum, "
-            "so this rises with refinement instead of converging."
+            "Peak field magnitude in the section, upstream's metric of the same name — where a "
+            "dielectric would break down first. **It does not converge, and that is the "
+            "physics rather than the mesh**: the electrode's two bottom edges are right angles "
+            "facing the gap, and a right angle has an unbounded field in the continuum. A "
+            "coarse grid cannot see it and reports the gap field V/d; every refinement gets "
+            "closer to a singularity, so the number climbs — 1.00, 1.06, 1.10 and 1.22 times "
+            "V/d as the cell goes from 40 down to 10 µm. Read it as a statement about how "
+            "sharp the rim is, and use V/d for the field between the plates."
         ),
         field="E",
         reduction="max",
+    ),
+    # ---------------------------------------------------------------- §8, as declared numbers
+    #
+    # **Verification residuals, in `metrics`, on purpose.** The envelope carries one `residual`
+    # and this exercise runs four checks; the alternative home is a `report.json` artifact, and
+    # ADR-015 records that moving *away* from that artifact is the direction this lab is going.
+    # So they are declared here, where a caller can read what each one measures before spending
+    # a solve — with names that say they are checks rather than answers, because the separation
+    # `stats` and `metrics` draw is cost against answer and these are neither.
+    MetricSpec(
+        name="energy_charge_consistency_rel",
+        unit="1",
+        description=(
+            "How far the two routes to the capacitance disagree, over the sweep. An identity "
+            "for a converged discrete solution, so what it measures is the linear solve rather "
+            "than the mesh. §8 gates the challenge on this being under 1%."
+        ),
+    ),
+    MetricSpec(
+        name="fit_residual_rel",
+        unit="1",
+        description=(
+            "How far the fitted curve sits from the solved points it was fitted to. Large means "
+            "this geometry is not in the published measurement's reciprocal-quadratic family — "
+            "which would be a finding rather than a bug, and would mean every derivative "
+            "reported here describes the fit rather than the sensor."
+        ),
+    ),
+    MetricSpec(
+        name="benchmark_rel",
+        unit="1",
+        description=(
+            "Worst relative distance between the solved sweep and the measurement published in "
+            "2015 — the external check, and the one row in §8 that is not a self-consistency "
+            "test. Expected to grow as the geometry is moved away from the measured one: a "
+            "different chamfer is a different sensor."
+        ),
+    ),
+    MetricSpec(
+        name="tilt_benchmark_rel",
+        unit="1",
+        description=(
+            "The same, for the second published curve: the tilt coefficient this run infers "
+            "against the printed 0.09 nF/deg². Independent of the first, because the hybrid "
+            "method reaches it from C(z) rather than from anything fitted to C(γ)."
+        ),
     ),
 ]
 
@@ -577,6 +628,17 @@ class CapacitorAxi2D(Solver):
             "tilt_error": calibration.metrics["tilt_error"],
             "fringe_excess": calibration.metrics["fringe_excess"],
             "parallel_plate": calibration.metrics["parallel_plate"],
+            # Supplied rather than left to the server's `field`/`reduction` path, and the
+            # reason is the raster. The declared reduction runs over the field that *travels
+            # back*, which is a uniform resampling of a window several annulus widths across —
+            # and a 90 µm gap is a fraction of one of its cells. It reported 4710 V/m for a
+            # section whose peak is 11111: not a coarse answer, a different one, 58% low with
+            # nothing to say so. The solve knows the real peak; the picture cannot.
+            "e_max": float(nominal.field[~nominal.held].max()),
+            "energy_charge_consistency_rel": calibration.residuals["energy_charge_consistency"],
+            "fit_residual_rel": calibration.residuals["fit_residual"],
+            "benchmark_rel": calibration.residuals["benchmark"],
+            "tilt_benchmark_rel": calibration.residuals["tilt_benchmark"],
         }
 
         return SolverResult(
