@@ -1127,6 +1127,11 @@ export default {
     model: {
       section: 'The cross-section',
       solid: 'The whole body',
+      attemptSection:
+        'Read on the cross-section, which takes the device to warm the base evenly along the whole length.',
+      attemptSolid:
+        'Read on the whole body. The cross-section would have put the resistance at {extruded} K/W against {solid} — the same sink, one assumption fewer.',
+      attemptSolidAlone: 'Read on the whole body, with no cross-section run to set it against.',
       sectionNote:
         'The device is taken to heat the base evenly along the whole length. Exact for the conduction, and the assumption a real device breaks.',
       solidNote:
