@@ -397,3 +397,97 @@ identity, it is free.
 - Radiation gets deferred "for version two". Then the nominal case over-predicts the temperature
   rise by tens of percent, the finish control has nothing to do, and the exercise teaches that
   fin count is the only lever — which is the specific wrong lesson §2.2 exists to prevent.
+
+---
+
+## 13. The third dimension, and the number the section could not report
+
+**Built, as `lab.heatsink3d`.** §2 says the plane solve is exact for an extrusion, and it is:
+a prismatic body has no third-dimension conduction to neglect. What §2 also assumes, in the same
+sentence, is that **the device heats the base evenly along the whole length** — and §5's own
+inputs give it away, because a 30 mm footprint on a 60 mm extrusion is not even along anything.
+The heat has to run sideways along the base to reach the far fins, and that run costs a
+temperature drop the cross-section has nowhere to put.
+
+Until Fenix Spoon's protocol 1.17 there was no way to say so. `regions2d` has no length, so the
+extrusion travelled as `params.depth` — a multiplier the server could not check and a
+consequence it could not refuse. 1.17 makes the third coordinate exist, and this section is what
+the lab does with it. The decision record is
+[ADR-023](../architecture-decisions.md#adr-023--the-heat-sink-gets-a-third-dimension-and-what-it-buys-is-the-spreading-resistance).
+
+### 13.1 What is solved, and what is deliberately unchanged
+
+`div(k grad T) = 0` over the whole body, by finite volumes on the §2 grid extruded along `z`,
+with a line on each edge of the device footprint for the reason there is one on each fin edge:
+a boundary that falls between two cell centres is a boundary whose position moves with the
+resolution.
+
+Everything on the *boundary* is the same model, evaluated on a longer body:
+
+- `h` comes from the same correlation on the same channel (§2.1). A channel between two fins is
+  the same channel however long the extrusion is, and its width is what the correlation is a
+  function of.
+- the radiative exchange inside a channel is §2.2's two-dimensional radiosity problem, solved at
+  every station along the length with that station's wall temperatures. The enclosure geometry is
+  exact — a channel really is prismatic — and what is neglected is exchange **along** it, a hot
+  station seeing a cooler one. That is declared as the `prismatic_radiation` assumption, and it
+  is the first thing to distrust on a poor conductor with a small device.
+
+So the only thing the third dimension adds is conduction along the length, and the two cut ends.
+
+### 13.2 The answer is a decomposition, because the effects have opposite signs
+
+Three solves, and every term is measured rather than apportioned:
+
+```
+R  =  R_extruded  +  spreading  -  end_gain
+```
+
+| Term | What it is | Sign |
+|---|---|---|
+| `thermal_resistance_extruded` | `lab.heatsink2d`'s answer, on the **same in-plane grid** | — |
+| `spreading_resistance` | the same body with its ends shut, minus the above | always **+** |
+| `end_gain` | that solve, minus the real one: what two cut ends are worth | always **+** |
+| `depth_correction` | their net, and the number to add to the plane answer | either |
+
+**The sign of the last row is the finding.** On the nominal 60 mm sink the two ends are worth
+more than the spreading costs, so the plane model comes out about 2.6% *pessimistic*. Stretch the
+same die to a 200 mm extrusion and the spreading wins by about 14%. Reporting only the net would
+have taught that three dimensions do not matter here, when what is true is that two effects of a
+few percent happened to cancel — which is why `end_loss_fraction` is reported beside them and
+measures the second effect directly.
+
+### 13.3 Verification: the configuration in which three dimensions must do nothing
+
+The claim above — that this adds conduction along the length and *nothing else* — is testable,
+because there is a configuration in which the extra thing is inert: the device covering the whole
+length, with the two ends held adiabatic. There this solver must reproduce §2's solve on the same
+grid, and it does, to eleven figures — the conjugate-gradient tolerance, and therefore as close
+as "the same problem" can be demonstrated.
+
+That agreement is reported to the visitor as the `extruded_limit` residual rather than living
+only in a test. It is **absent** from any run where the two solvers are not solving the same
+problem: everywhere else the difference is the answer, and calling the answer a residual would
+be the arithmetic saying what it wants to hear.
+
+The energy balance of §8 is unchanged and still the headline check, now over a boundary that
+includes the two ends.
+
+### 13.4 What comes back, and why the browser needed nothing
+
+A `mesh3d`, retiled coarser than the solve grid — by the same rule, so no fin disappears — because
+six tetrahedra per solved cell is tens of megabytes of JSON for a picture nobody can see that
+finely. The page draws it by asking the server for a `slice`, which comes back as a `grid2d`,
+which is the kind `<fs-viewer>` has drawn since 1.0. Zero lines of rendering code.
+
+The default cut is the cross-section, because that is the picture a visitor already knows from
+§6; the one worth changing to is a plane through the base, where the gradient along the length
+*is* the spreading resistance, seen rather than tabulated.
+
+### 13.5 What stays with the cross-section, and why the page offers both
+
+The fin-count sweep of §10 — twenty solves, and the reason this exercise exists — stays on
+`lab.heatsink2d`, which is seconds where the solid is minutes. The solid is the **second**
+question: once a visitor has found the fin count, it answers what the length and the device's
+own size were doing while they looked for it. The challenge, its targets and its lesson are
+unchanged.

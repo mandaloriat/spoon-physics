@@ -1,8 +1,11 @@
 """Lab-specific solver adapters.
 
-Three adapters live here: the airfoil exercise's panel method, the magnetics exercise's
-finite-volume magnetostatics, and the bridge exercise's direct stiffness method for a
-pin-jointed truss. Each is registered by importing it, and importing this package is
+Five adapters live here: the airfoil exercise's panel method, the magnetics exercise's
+finite-volume magnetostatics, the bridge exercise's direct stiffness method for a pin-jointed
+truss, and the heat-sink exercise twice — once on the cross-section and once on the solid body,
+which is two capabilities rather than a switch because the *geometry kind* differs and that is
+what lets each refuse the other's payload (ADR-023). Each is registered by importing it, and
+importing this package is
 wired into ``physics_lab.main`` before the app is created, so they appear in
 ``GET /api/v1/solvers``, in the capability catalogue and in the front-end's solver picker with
 no further wiring. The worker needs the same import — see ``physics_lab.worker``, which is why
@@ -30,6 +33,12 @@ Because each exercise needs physics Fenix Spoon does not have, and in every case
   members to answer it with, and meshing 50 mm bars over a 24 m span would need cells finer
   than the bars across a thousand times the area. See ADR-019, which also records the geometry
   the protocol turned out not to have.
+* Upstream's two conduction adapters declare `no_radiation`, and their own assumption text says
+  radiation is "not negligible for a hot surface in still air" — which is the heat sink's
+  nominal case. A radiative boundary with a radiosity enclosure and a ``T^4`` nonlinearity is
+  physics upstream does not have and does not claim to. That is true of the solid body as well
+  as the section, so the third dimension inherited the same reason rather than needing a new
+  one. See ADR-023.
 
 Every adapter is split the same way, so that only the last file in each list knows about the
 protocol — which is what lets the physics be tested against a closed form, without a job, a
@@ -49,6 +58,16 @@ server or an envelope:
 * ``truss.py`` — the direct stiffness method for a bar network. Arrays only.
 * ``bridge.py`` — the exercise: utilisation, buckling, mass, residuals, validity.
 * ``truss2d.py`` — the ``Solver`` adapter, the load case, and nothing else.
+
+* ``correlations.py`` — convection coefficients from published relations. Arrays and air.
+* ``viewfactors.py`` — exact two-dimensional view factors, and the checks on an enclosure.
+* ``heatsink.py`` — conduction on the cross-section: the exercise, its metrics and residuals.
+* ``heatsink2d.py`` — the ``Solver`` adapter for ``regions2d``, and nothing else.
+* ``heatsink_solid.py`` — the same physics on the solid body, reusing the three files above
+  unchanged. The only thing it adds is conduction along the extrusion, and the test that says
+  so is the extruded limit: with the device covering the whole length and the ends shut it
+  reproduces ``heatsink.solve`` to the solver tolerance.
+* ``heatsink3d.py`` — the ``Solver`` adapter for ``regions3d``, and nothing else.
 
 Adding another
 --------------
@@ -84,8 +103,15 @@ asks for.
 from . import (  # noqa: F401  - importing registers them
     airfoil_panel2d,
     heatsink2d,
+    heatsink3d,
     magnetics2d,
     truss2d,
 )
 
-__all__: list[str] = ["airfoil_panel2d", "heatsink2d", "magnetics2d", "truss2d"]
+__all__: list[str] = [
+    "airfoil_panel2d",
+    "heatsink2d",
+    "heatsink3d",
+    "magnetics2d",
+    "truss2d",
+]

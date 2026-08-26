@@ -13,19 +13,6 @@ export const REPO_URL = 'https://github.com/mandaloriat/spoon-physics';
 export const FENIX_SPOON_URL = 'https://github.com/mandaloriat/fenix-spoon';
 
 /**
- * What the lab claims to be, in three words each. Shown beside the name on the homepage and
- * nowhere else: on an experiment page the visitor is already inside one of the problems, and
- * a strapline repeated on every page stops being read. See ADR-016.
- *
- * A getter rather than a constant now that there are two languages: the value depends on which
- * one this page load resolved to, and a module-level string would be baked before `t` could
- * answer. ADR-016 fixes the *claim*, not the English wording of it.
- */
-export function tagline() {
-  return t('brand.tagline');
-}
-
-/**
  * `GET /health` — what this deployment is made of, and whether it will accept solves.
  *
  * It lives here rather than beside the protocol client because it is not part of the
@@ -88,51 +75,78 @@ function languageSwitch() {
   );
 }
 
-/** Site header. `current` marks the active nav item for styling and screen readers. */
-function siteHeader(current = '') {
-  const link = (href, label, id) =>
-    el('a', { href, 'aria-current': current === id ? 'page' : null, text: label });
+/**
+ * Site header: one 56 px row. The wordmark, then — on a bench page — a breadcrumb chip, and
+ * a single nav link on the right: `Code` everywhere, or `Model details` on a bench that has
+ * a details row to anchor to. The old three-item nav and the header tagline left with the
+ * redesign (ADR-025); the homepage is the challenge index now.
+ *
+ * @param {string} current marks the active nav item for screen readers
+ * @param {{crumb?: string, details?: string}} options `crumb` is the bench's breadcrumb text
+ *   (e.g. `/ 01 The wing`); `details` is the anchor of its model-details row
+ */
+function siteHeader(current = '', { crumb = '', details = '' } = {}) {
   return el(
     'header',
     { class: 'site-header' },
     el(
-      'div',
-      { class: 'wrap' },
-      el(
-        'a',
-        { class: 'brand', href: '/' },
-        el('span', { class: 'mark', text: '◦∿' }),
-        el('span', { text: t('brand.name') }),
-        current === 'home' ? el('span', { class: 'sub', text: tagline() }) : null,
-      ),
-      el(
-        'nav',
-        { class: 'site-nav', 'aria-label': t('nav.label') },
-        link('/', t('nav.experiments'), 'home'),
-        link('/#modes', t('nav.how'), 'modes'),
-        link(REPO_URL, t('nav.code'), 'repo'),
-      ),
-      languageSwitch(),
+      'a',
+      { class: 'brand', href: '/' },
+      el('span', { class: 'mark', text: '◦∿', 'aria-hidden': 'true' }),
+      el('span', { class: 'brand__name', text: t('brand.name') }),
     ),
+    crumb ? el('span', { class: 'crumb', text: crumb }) : null,
+    el(
+      'nav',
+      { class: 'site-nav', 'aria-label': t('nav.label') },
+      details
+        ? el('a', { href: details, text: t('nav.details') })
+        : el('a', {
+            href: REPO_URL,
+            text: t('nav.code'),
+            'aria-current': current === 'repo' ? 'page' : null,
+          }),
+    ),
+    languageSwitch(),
   );
 }
 
+/**
+ * Site footer: three items in one wrapping row. The advanced-lab link is where the homepage
+ * shelf went; the caveat line is where the boxed disclaimer went — one sentence, on every
+ * page, instead of a warning panel on each. ADR-025.
+ */
 function siteFooter() {
-  // Two flex children, each a self-contained sentence: the attribution FEniCSx and Fenix
-  // Spoon are owed, and where the source is. Splitting the punctuation across more spans
-  // would have the flex gap fall between a word and its full stop.
-  const attribution = el('p', {}, document.createTextNode(t('footer.builtWith')));
-  attribution.append(
-    el('a', { href: FENIX_SPOON_URL, text: 'Fenix Spoon' }),
-    t('footer.and'),
-    el('a', { href: 'https://fenicsproject.org/', text: 'FEniCSx' }),
-    t('footer.notAffiliated'),
+  const advanced = el(
+    'p',
+    { class: 'site-footer__advanced' },
+    document.createTextNode(`${t('footer.advanced')} · `),
+    el('a', { href: '/experiments/solenoid/', text: t('home.solenoid.name') }),
   );
 
-  const source = el('p', {});
-  source.append(el('a', { href: REPO_URL, text: t('footer.source') }), t('footer.licence'));
+  const build = el(
+    'p',
+    { class: 'site-footer__build' },
+    document.createTextNode(t('footer.builtWith')),
+  );
+  build.append(
+    el('a', { href: FENIX_SPOON_URL, text: 'Fenix Spoon' }),
+    t('footer.and'),
+    // The affiliation disclaimer rides as the link's tooltip: one line of footer cannot hold
+    // the sentence, and dropping the claim altogether would leave the attribution implying it.
+    el('a', {
+      href: 'https://fenicsproject.org/',
+      text: 'FEniCSx',
+      title: t('footer.notAffiliated'),
+    }),
+    ' · ',
+    el('a', { href: REPO_URL, text: t('footer.source') }),
+    t('footer.licence'),
+  );
 
-  return el('footer', { class: 'site-footer' }, el('div', { class: 'wrap' }, attribution, source));
+  const caveat = el('p', { class: 'site-footer__caveat', text: t('footer.caveat') });
+
+  return el('footer', { class: 'site-footer' }, advanced, build, caveat);
 }
 
 /**
@@ -144,8 +158,8 @@ function siteFooter() {
  * either alone. `translateDom` also clears the attribute the `<head>` snippet used to hold the
  * first paint back, so this call is what makes the page visible on an Italian load.
  */
-export function mountChrome(current) {
-  document.getElementById('header')?.replaceWith(siteHeader(current));
+export function mountChrome(current, options = {}) {
+  document.getElementById('header')?.replaceWith(siteHeader(current, options));
   document.getElementById('footer')?.replaceWith(siteFooter());
   translateDom();
 }

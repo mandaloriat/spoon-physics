@@ -183,3 +183,78 @@ export function paramSpec(solver, name) {
   if (property.enum) spec.enum = property.enum;
   return spec;
 }
+
+/**
+ * Cut a plane through a three-dimensional result and get back something the viewer can draw.
+ *
+ * **Why this is here and not in the widget.** `<fs-viewer>` is a canvas renderer for `grid2d`
+ * and `mesh2d` and upstream's ADR 0006 is explicit that it stays exactly that: a solid is
+ * *seen* by cutting it, and the cut is a field query the server already runs. So the browser
+ * story for three dimensions is this function — two POSTs and a merge — rather than a WebGL
+ * backend, and the lab drew its first solid without a line of rendering code.
+ *
+ * **Why it asks for each field separately and merges them.** The `slice` operation answers for
+ * one named field, which is right: its budget is per query and a caller usually wants one.
+ * The page's field picker, though, switches between fields on a result that is already drawn,
+ * and re-cutting on every switch would put a round trip behind a `<select>`. Both cuts are the
+ * same plane through the same mesh, so their grids are identical and merging them is safe —
+ * asserted here rather than assumed, and asserted over the *whole* grid definition rather than
+ * its shape, because a server that agreed on 192x192 and disagreed on `bounds` would otherwise
+ * have one field's values painted on the other's coordinates.
+ *
+ * @param {string} jobId the finished job
+ * @param {{fields: string[], axis: 'x'|'y'|'z', value: number, samples?: number}} plane
+ * @returns {Promise<{kind: 'grid2d', data: object, plane: object, missed: number}>}
+ */
+export async function sliceOf(jobId, { fields, axis, value, samples = 192 }) {
+  const cuts = await Promise.all(
+    fields.map(async (field) => {
+      const response = await fetch(client.url(`/api/v1/jobs/${jobId}/query`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ field, op: 'slice', axis, value, samples }),
+      });
+      if (!response.ok) {
+        throw new Error(t('experiment.sliceFailed', { status: response.status }));
+      }
+      return { field, answer: (await response.json()).result };
+    }),
+  );
+
+  const [first] = cuts;
+  const merged = {
+    bounds: first.answer.data.bounds,
+    shape: first.answer.data.shape,
+    fields: {},
+    ...(first.answer.data.mask ? { mask: first.answer.data.mask } : {}),
+  };
+  for (const { field, answer } of cuts) {
+    if (!sameGrid(answer.data, merged)) throw new Error(t('experiment.sliceMismatch'));
+    merged.fields[field] = answer.data.fields[field];
+  }
+  return { kind: 'grid2d', data: merged, plane: first.answer.plane, missed: first.answer.missed };
+}
+
+/**
+ * Do two `grid2d` payloads describe the *same* grid — all of it, not the shape alone?
+ *
+ * A grid is its cell counts, the box they cover, and which of those cells hold nothing. Two
+ * cuts of one plane through one stored mesh agree on all three, and checking only the first
+ * would leave the failure this guard exists to catch: same 192x192 on different `bounds` merges
+ * without complaint and paints one field onto the other's coordinates, which is a picture that
+ * looks right and is not.
+ *
+ * The mask is compared element by element with an early exit, because it is the one part that
+ * is an array of tens of thousands of entries and the one part a stringify would make expensive.
+ */
+function sameGrid(a, b) {
+  if (String(a.shape) !== String(b.shape)) return false;
+  if (String(a.bounds) !== String(b.bounds)) return false;
+  if (Boolean(a.mask) !== Boolean(b.mask)) return false;
+  if (!a.mask) return true;
+  if (a.mask.length !== b.mask.length) return false;
+  for (let index = 0; index < a.mask.length; index += 1) {
+    if (a.mask[index] !== b.mask[index]) return false;
+  }
+  return true;
+}

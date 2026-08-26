@@ -5,7 +5,7 @@
 <title data-i18n="truss.title">The bridge — Spoon Physics</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" data-i18n-attr="content: truss.description" content="A structures exercise: build a truss across a gorge, load it at the joints or along the deck, and carry the traffic within a mass budget without buckling a member — with computed forces, engineering metrics and a verification residual on every run.">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 <link rel="alternate" hreflang="en" href="/experiments/truss/?lang=en">
 <link rel="alternate" hreflang="it" href="/experiments/truss/?lang=it">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
@@ -34,17 +34,20 @@
   }, 2000);
 })();
 </script>
-<!-- Two packages, not three. This experiment's geometry is a *network* — joints and bars —
+<!-- No geometry editor here. This experiment's geometry is a *network* — joints and bars —
      and `<fs-geometry-2d>` edits a `domain2d` outline, which is a different kind of thing
      with different physics behind it. The lattice editor is the page's own SVG, layered in
      the workspace exactly where the airfoil layers the widget, and it is hidden outside Build
-     mode for the same reason: a drag must never be both a pan and a reshaping. See
-     docs/architecture-decisions.md, ADR-009 and ADR-019. -->
+     mode for the same reason: a drag must never be both a pan and a reshaping. The last entry
+     is a *module* rather than a package: `shared/curve.js` takes `@fenix-spoon/plot`'s axis
+     arithmetic and not its element (ADR-024). See docs/architecture-decisions.md, ADR-009 and
+     ADR-019. -->
 <script type="importmap">
 {
   "imports": {
     "@fenix-spoon/client": "/vendor/fenix-spoon/client/index.js",
-    "@fenix-spoon/viewer": "/vendor/fenix-spoon/viewer/index.js"
+    "@fenix-spoon/viewer": "/vendor/fenix-spoon/viewer/index.js",
+    "@fenix-spoon/plot/scale.js": "/vendor/fenix-spoon/plot/scale.js"
   }
 }
 </script>

@@ -4,7 +4,7 @@
   "subtitle": "Surface, the gap the air moves through, and mass",
   "intro": "A 30 W device heats an aluminium heat sink. Adding fins adds surface, and it also narrows the channels the air has to rise through. Try predicting where the best compromise sits before you compute it.",
   "challenge": {
-    "statement": "Keep a 30 W device below 95 °C in still air at 25 °C, using no more than 170 g of aluminium over the 60 mm extrusion. Then make the sink as good as it can be: the score is thermal resistance times mass, so metal spent has to earn its place. Runs that leave the model's domain of validity do not count.",
+    "statement": "Keep a 30 W device below 95 °C in still air at 25 °C, using no more than 170 g of aluminium over an extrusion that starts 60 mm long — and the length is yours to change too. Then make the sink as good as it can be: the score is thermal resistance times mass, so metal spent has to earn its place. Runs that leave the model's domain of validity do not count.",
     "targets": [
       {
         "metric": "t_max",
@@ -25,7 +25,7 @@
       "below": 0.01
     },
     "next_step": "the same temperature on less aluminium",
-    "plain_statement": "Keep the device under 95 °C in still air at 25 °C, using at most 170 g of aluminium. The sink is 60 mm long. The attempt only counts inside the range of the correlations the model uses."
+    "plain_statement": "Keep the device under 95 °C in still air at 25 °C, using at most 170 g of aluminium. The sink starts 60 mm long, and that is a control like any other. The attempt only counts inside the range of the correlations the model uses."
   },
   "prediction": {
     "question": "With this base, how many fins do you think give the lowest temperature?",

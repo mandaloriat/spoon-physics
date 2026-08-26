@@ -14,7 +14,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Keep this default in step with pyproject.toml and .env.example — scripts/check-pins.sh
 # fails the build when they drift apart.
-FENIX_SPOON_COMMIT="${FENIX_SPOON_COMMIT:-4e7c296a7d351575194e25a1d4ebc1c703a6e08f}"
+FENIX_SPOON_COMMIT="${FENIX_SPOON_COMMIT:-3d483a38d619b3b6c2d88e798ca0be5420d5ef6d}"
 FENIX_SPOON_REPO="${FENIX_SPOON_REPO:-https://github.com/mandaloriat/fenix-spoon.git}"
 
 VENDOR_DIR="$REPO_ROOT/frontend/vendor/fenix-spoon"
@@ -37,13 +37,13 @@ fi
 git -C "$WORK_DIR" fetch --quiet --depth 1 origin "$FENIX_SPOON_COMMIT"
 git -C "$WORK_DIR" checkout --quiet FETCH_HEAD
 
-echo "==> building @fenix-spoon/{client,geometry-2d,viewer}"
+echo "==> building @fenix-spoon/{client,geometry-2d,viewer,plot}"
 npm --prefix "$WORK_DIR/client" ci
 npm --prefix "$WORK_DIR/client" run build
 
 echo "==> vendoring into frontend/vendor/fenix-spoon"
 rm -rf "$VENDOR_DIR"
-for package in client geometry-2d viewer; do
+for package in client geometry-2d viewer plot; do
   mkdir -p "$VENDOR_DIR/$package"
   cp -R "$WORK_DIR/client/packages/$package/dist/." "$VENDOR_DIR/$package/"
 done

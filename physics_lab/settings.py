@@ -18,7 +18,7 @@ from pathlib import Path
 #: ``/health`` so a running deployment can be asked what it is actually made of.
 #: Keep in step with pyproject.toml, .env.example and the Dockerfile — enforced by
 #: scripts/check-pins.sh.
-DEFAULT_FENIX_SPOON_COMMIT = "4e7c296a7d351575194e25a1d4ebc1c703a6e08f"
+DEFAULT_FENIX_SPOON_COMMIT = "3d483a38d619b3b6c2d88e798ca0be5420d5ef6d"
 
 #: dolfinx release the pinned FEniCSx image carries. Informational; reported by /health.
 DEFAULT_DOLFINX_VERSION = "v0.11.0"

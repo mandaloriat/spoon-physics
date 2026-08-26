@@ -1,79 +1,68 @@
 /* Spoon Physics — the whole visual identity, in one file.
  *
- * Restrained on purpose. The audience is a curious teenager, a student, or an adult who
- * likes physics — not a buyer of enterprise software and not a child. So: generous line
- * length limits, real typographic hierarchy, tabular numerals for anything measured, and
- * no illustration where a diagram would do.
+ * The site is an **instrument**, not a document (ADR-025): dark ground, one accent, the
+ * computed field as the primary visual, and drastically less prose on the first screen of
+ * every page. The paper palette, the Fraunces serif and every rounded corner went with the
+ * redesign; what stayed is the discipline — tabular numerals for anything measured, no
+ * illustration where a diagram would do, and no decoration that outshines the data.
  *
- * Fenix Spoon's own pages are plain system-font documents with a single blue accent;
- * this stays in that family rather than inventing a second identity for a project built
- * on top of it.
+ * **One accent.** `--accent` (cyan) is the instrument: controls, links, anything that acts
+ * on the solve or reports it in range. `--warn` (amber) is a missed target. The violet
+ * `--spark` survives only inside the guided lesson (`guide.js` output), which keeps ADR-021's
+ * rule — the voice that explains is marked by colour, the bench is not — at the one place
+ * the lesson still renders.
  *
- * **Two colours, and they mean different things** (ADR-021). This file used to say "one
- * accent colour", and that was right while every page was an instrument. Now the pages
- * open with a lesson, and a lesson and a measurement are not the same kind of thing:
- * `--accent` (blue) is the instrument — controls, links, anything that acts on the solve —
- * and `--spark` (violet) is the voice that explains — chapters, their numbering, their
- * progress. A measured number is never violet and a chapter control is never blue, so a
- * visitor can see the handover from the story to the bench before reading a word of it.
+ * **Dark is the only mode.** The redesign's open question — ship dark-only, or derive a
+ * light counterpart — is decided for dark-only: the field plate, the overlay palette and
+ * the grid texture are all authored against this ground, and a light derivation would be a
+ * second design pretending to be a theme. `color-scheme: dark` tells the browser so its
+ * form controls agree.
  */
 
-/* The one downloaded face on the site. Self-hosted because the Caddyfile's CSP says
-   `font-src 'self'`, so a CDN would be blocked in production and work in development —
-   the worst way to find out. `font-display: swap` and a real serif fallback in the stack
-   are what keep it an improvement rather than a dependency: if it never arrives, the page
-   is styled, just less characterful. Only the `latin` subset ships (67 kB), which covers
-   English, Italian, the prime in L′ and the currency signs; anything outside it falls back
-   to the next family in the stack. Fraunces is under the SIL Open Font Licence — see
-   assets/fonts/OFL.txt, which travels with it because the licence requires it. */
-@font-face {
-  font-family: 'Fraunces';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('/assets/fonts/fraunces-variable.woff2') format('woff2');
-  unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
-    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 
-  --ink: #14181f;
-  --ink-soft: #4a5464;
-  --ink-faint: #6b7686;
-  /* Paper, not screen. The page is a warm off-white and a card is pure white on top of it,
-     so a card lifts without needing a shadow — this file draws none and has no reason to
-     start. The sunken tone follows the same hue rather than the old blue-grey, which read
-     cold beside a photograph of a computed field. */
-  --surface: #fdfcfa;
-  --surface-sunken: #f5f2ec;
-  --surface-raised: #ffffff;
-  --line: #e2ddd4;
-  --line-strong: #c8c1b5;
-  --accent: #2563eb;
-  --accent-soft: #eaf0fe;
-  --accent-ink: #1d4ed8;
-  /* The narrative colour. Only the guided path may use it: chapter numbers, the progress
-     dots, the skip control. Never a measured quantity — see the header note. */
-  --spark: #7b3fe4;
-  --spark-soft: #f3edfd;
-  --spark-ink: #6027cd;
-  --warn: #b45309;
-  --warn-soft: #fdf4e3;
-  --ok: #15803d;
+  /* The instrument's greys, darkest to lightest. */
+  --bg: #07090b; /* page ground, outside the frame */
+  --surface: #0b0e12; /* the page */
+  --surface-sunken: #0e1217; /* strips, action bar, rail wells */
+  --surface-raised: #12161c; /* inputs and raised blocks */
+  --plate: #1e1e22; /* the field plate — the viewer's own background */
+  --line: #1c2229; /* hairlines between regions */
+  --line-strong: #2a313a; /* borders on controls and overlays */
+  --grid: #11161c; /* the background engineering grid */
+
+  --ink: #e7ebf0;
+  --ink-soft: #9aa5b1;
+  --ink-faint: #6c7783;
+  --ink-caption: #8a95a1; /* the footer caveat — the contrast floor */
+
+  /* The one accent: cyan, the instrument. Text set on it uses --accent-contrast. */
+  --accent: oklch(0.82 0.13 195);
+  --accent-contrast: #07090b;
+  --accent-soft: #10141a;
+  --accent-ink: var(--accent);
+
+  /* The narrative colour. Only the guided lesson may use it — see the header note. */
+  --spark: #b494ff;
+  --spark-soft: #211a33;
+  --spark-ink: #cbb5ff;
+
+  /* A missed target. */
+  --warn: oklch(0.78 0.15 65);
+  --warn-soft: #2a2116;
+  --ok: #5bbd7f;
 
   /* Material colours for cross-section diagrams. Iron reads as iron and copper as copper,
      which is one less legend to consult; they are never used to encode a field value. */
-  --core: #b3402f;
-  --winding: #a2701a;
+  --core: #e06a52;
+  --winding: #d9a63f;
 
   /* And for the site a structure is built on: ground reads as ground, the water reads as
      water. Same rule — they say what a thing *is*, never how much of anything it carries. */
-  --steel: #3f4c5c;
-  --ground: #8a7a5f;
-  --water: #3f7f9c;
+  --steel: #b6c2d2;
+  --ground: #b0a184;
+  --water: #6fb4d4;
 
   /* Annotation colours for the field overlay. Chosen to read against *both* ends of every
      colormap the lab uses — the viewer's canvas is dark under viridis and near-white under
@@ -87,45 +76,17 @@
   --overlay-ac: #4ade80;
   --overlay-streamline: #7ee0d3;
 
-  --radius: 8px;
-  --radius-lg: 14px;
+  /* Radius: 0 everywhere. Every panel, button and overlay is square (ADR-025). */
+  --radius: 0;
+  --radius-lg: 0;
   --measure: 68ch;
 
-  /* Headings and card titles only. Never a number: a measured quantity stays monospaced and
-     tabular, which is the rule this file has had from the start. */
-  --font-display: 'Fraunces', Georgia, 'Iowan Old Style', 'Times New Roman', serif;
-  --font-text:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink: #e8ecf2;
-    --ink-soft: #a3adbd;
-    --ink-faint: #7d8798;
-    --surface: #0f1218;
-    --surface-sunken: #151a22;
-    --surface-raised: #181e27;
-    --line: #262d38;
-    --line-strong: #39424f;
-    --accent: #6b9bff;
-    --accent-soft: #1a2438;
-    --accent-ink: #9dbcff;
-    /* Lightened well past the light-mode violet: on a near-black surface #7b3fe4 is a
-       smudge rather than a colour, and the chapter numbering has to stay legible. */
-    --spark: #b494ff;
-    --spark-soft: #211a33;
-    --spark-ink: #cbb5ff;
-    --warn: #e0a14a;
-    --warn-soft: #2a2116;
-    --ok: #5bbd7f;
-    --core: #e06a52;
-    --winding: #d9a63f;
-    --steel: #b6c2d2;
-    --ground: #b0a184;
-    --water: #6fb4d4;
-  }
+  /* Two families, both stack-only, no web font. The display face is the text face: the
+     hierarchy is carried by size, weight and letter-spacing rather than by a second family.
+     A measured quantity stays monospaced and tabular — the rule this file has always had. */
+  --font-display: var(--font-text);
+  --font-text: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 
 *,
@@ -144,7 +105,7 @@ body {
   color: var(--ink);
   font-family: var(--font-text);
   font-size: 16px;
-  line-height: 1.6;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -159,48 +120,33 @@ body {
 }
 
 a {
-  color: var(--accent-ink);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  color: var(--accent);
+  text-decoration: none;
 }
 
 a:hover {
-  text-decoration-thickness: 2px;
+  color: #ffffff;
 }
 
 h1,
 h2,
 h3 {
-  line-height: 1.25;
-  letter-spacing: -0.015em;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   margin: 0 0 0.5rem;
-  font-weight: 620;
-}
-
-/* The display face carries the voice, so it goes where the page speaks — the title of a
-   page, of a chapter, of a card — and nowhere it merely labels. `font-optical-sizing: auto`
-   is what makes a variable Fraunces worth shipping: the same file draws a 2.5rem headline
-   and a 1.1rem card title with different letterforms, tightened for the size each is at. */
-h1,
-h2 {
-  font-family: var(--font-display);
-  font-optical-sizing: auto;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 700;
 }
 
 h1 {
-  font-size: clamp(1.9rem, 1.25rem + 2.3vw, 2.75rem);
-  line-height: 1.15;
+  font-size: clamp(1.6rem, 1.1rem + 1.6vw, 2.2rem);
 }
 
 h2 {
-  font-size: clamp(1.25rem, 1rem + 0.9vw, 1.6rem);
+  font-size: clamp(1.15rem, 1rem + 0.7vw, 1.4rem);
 }
 
 h3 {
-  font-size: 1.02rem;
-  font-weight: 640;
+  font-size: 1rem;
 }
 
 p {
@@ -216,60 +162,71 @@ kbd,
 
 code {
   font-size: 0.88em;
-  background: var(--surface-sunken);
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
   padding: 0.08em 0.34em;
+}
+
+/* A mono eyebrow: the recurring 11 px uppercase label the redesign labels everything with. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
 
 /* ---------------------------------------------------------------- site chrome */
 
+/* One plain 56 px bar. Not sticky-blurred any more: the pages no longer scroll past their
+   own instrument, so a header that follows the visitor has nothing to follow them to. */
 .site-header {
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  backdrop-filter: blur(8px);
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
-.site-header .wrap {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  min-height: 58px;
-  flex-wrap: wrap;
+  gap: 24px;
+  height: 56px;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
 }
 
 .brand {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.5rem;
-  font-family: var(--font-display);
-  font-optical-sizing: auto;
-  font-size: 1.12rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  gap: 10px;
   color: var(--ink);
   text-decoration: none;
 }
 
 .brand .mark {
   color: var(--accent);
-  font-size: 1.05em;
+  font-size: 18px;
 }
 
-.brand .sub {
+.brand__name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* The breadcrumb chip on a bench page: `/ 01 THE WING`. */
+.crumb {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--ink-faint);
-  font-weight: 400;
-  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .site-nav {
   margin-left: auto;
   display: flex;
-  gap: 1.1rem;
-  font-size: 0.9rem;
+  align-items: center;
+  gap: 20px;
+  font-size: 13px;
 }
 
 .site-nav a {
@@ -279,54 +236,61 @@ code {
 
 .site-nav a:hover,
 .site-nav a[aria-current='page'] {
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  color: #ffffff;
 }
 
 /* ------------------------------------------------------------- the language switch */
 
-/* Two links in a segmented control at the top right of every page. Deliberately small and
- * unaccented: it is a preference, not one of the lab's sections, and putting it in the nav's
- * own type size would give it the weight of an experiment. */
+/* Two links in a segmented control at the top right of every page. Real links to `?lang=xx`,
+ * shareable, reloading the page — ADR-020's behaviour, restyled and not converted. */
 .lang-switch {
   display: inline-flex;
   align-items: stretch;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  overflow: hidden;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-/* `margin-left: auto` sits on the nav; when the nav wraps away on a narrow screen the switch
- * has to take over pushing itself right, or it lands under the brand. */
-.site-nav + .lang-switch {
-  margin-left: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
 }
 
 .lang-switch__option {
-  padding: 0.2rem 0.5rem;
-  color: var(--ink-faint);
+  padding: 4px 8px;
+  color: var(--ink-soft);
   text-decoration: none;
   background: transparent;
+  border: 1px solid var(--line-strong);
   line-height: 1.5;
 }
 
 .lang-switch__option + .lang-switch__option {
-  border-left: 1px solid var(--line-strong);
+  border-left: 0;
 }
 
 .lang-switch__option:hover {
   color: var(--ink);
-  background: var(--surface-sunken);
+  background: var(--surface-raised);
   text-decoration: none;
 }
 
 .lang-switch__option.is-active {
-  color: var(--surface);
+  color: var(--accent-contrast);
   background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* On a phone the one-row header keeps its row: tighter padding, and the breadcrumb — a
+   nicety, not a control — is the thing that goes. */
+@media (max-width: 720px) {
+  .site-header {
+    padding: 0 16px;
+    gap: 12px;
+  }
+
+  .crumb {
+    display: none;
+  }
+
+  .site-nav {
+    gap: 12px;
+  }
 }
 
 /* The first paint, held back only while the page is about to say something other than what
@@ -336,32 +300,49 @@ html[data-lang-pending] body {
   visibility: hidden;
 }
 
+/* Three items in a wrapping row: the advanced-lab link (which replaced the homepage shelf),
+   the attribution, and — full width, on its own line — the caveat that replaced the boxed
+   disclaimer on every page. */
 .site-footer {
-  border-top: 1px solid var(--line);
-  margin-top: 4rem;
-  padding: 2rem 0 3rem;
-  color: var(--ink-faint);
-  font-size: 0.86rem;
-}
-
-.site-footer .wrap {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem 1.5rem;
+  gap: 12px 32px;
   align-items: baseline;
+  padding: 22px 32px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+
+.site-footer p {
+  margin: 0;
 }
 
 .site-footer a {
   color: var(--ink-soft);
 }
 
+.site-footer a:hover {
+  color: #ffffff;
+}
+
+.site-footer__build {
+  margin-left: auto;
+}
+
+.site-footer__caveat {
+  width: 100%;
+  color: var(--ink-caption);
+}
+
 /* ---------------------------------------------------------------- disclaimer */
 
+/* The boxed disclaimer left the redesigned pages for the footer's caveat line; the class
+   stays for the pages that have not migrated yet. */
 .disclaimer {
   border: 1px solid var(--line-strong);
   border-left: 3px solid var(--warn);
   background: var(--warn-soft);
-  border-radius: var(--radius);
   padding: 0.7rem 0.95rem;
   font-size: 0.88rem;
   color: var(--ink-soft);
@@ -372,305 +353,266 @@ html[data-lang-pending] body {
   color: var(--ink);
 }
 
-/* ---------------------------------------------------------------- hero + cards */
+/* ============================================================== the homepage
+ *
+ * Order: header → hero → three challenges → loop strip → method fold → footer. Everything
+ * else the page used to carry — tagline, card prose, three paragraphs of "how to play", the
+ * boxed disclaimer, the advanced shelf — is cut or folded (ADR-025's table says where each
+ * went).
+ */
 
 .hero {
-  padding: 3.5rem 0 1.25rem;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 660px;
+  gap: 48px;
+  align-items: center;
+  min-height: 600px;
+  padding: 56px 32px;
+  overflow: hidden;
+  background: var(--surface);
 }
 
-/* The product's claim, in the fixed wording ADR-016 settled on. It sits above the heading
-   because the heading is now an invitation, and a page can invite and still say what it is. */
-.hero__tagline {
-  margin: 0 0 0.6rem;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
+/* A faint engineering grid behind the hero and behind the instrument: two hairline layers,
+   drawn in their own positioned layer so the content never inherits the opacity. */
+.hero__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.hero__copy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+  max-width: 820px;
+}
+
+.hero__eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--ink-faint);
-  font-weight: 620;
+  color: var(--accent);
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(44px, 3rem + 2.2vw, 76px);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  text-wrap: pretty;
 }
 
 .hero .lede {
-  font-size: 1.14rem;
+  margin: 0;
+  font-size: 19px;
   color: var(--ink-soft);
-  max-width: 60ch;
+  max-width: 44ch;
 }
 
-/* Two up on a desktop rather than three. With four exercises, three columns leave the fourth
-   card alone on a row looking like an afterthought; two give an even block and a thumbnail
-   big enough to read as the picture of a real solve, which is the whole reason it is there. */
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
-  gap: 1.5rem;
-  margin: 1.75rem 0;
-  padding: 0;
-  list-style: none;
-}
-
-.card {
+.hero__actions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* The primary action: accent plate, near-black text, square corners. */
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+}
+
+.action:hover {
+  color: var(--accent-contrast);
+  background: #ffffff;
+}
+
+.action--quiet {
+  padding: 0 0 2px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: 14px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.action--quiet:hover {
+  background: transparent;
+  color: #ffffff;
+}
+
+/* The instrument panel: a real solve in a bounded plate, with a mono readout strip under it.
+   The image is a field `scripts/make-thumbnails.py` computed, never an illustration. */
+.hero__panel {
+  position: relative;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
+  background: var(--plate);
+}
+
+.hero__shot {
+  height: 300px;
   overflow: hidden;
 }
 
-/* A real solve, not an illustration: scripts/make-thumbnails.py runs the same solver the
-   page runs and commits the field as a PNG. The dark plate behind it is the viewer's own
-   background, so a card reads as a smaller version of the instrument. */
-.card__shot {
-  display: block;
-  aspect-ratio: 16 / 9;
-  background: #1e1e22;
-  overflow: hidden;
-}
-
-.card__shot img {
+.hero__shot img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.card__shot--planned img {
-  filter: saturate(0.55);
-  opacity: 0.75;
-}
-
-.card__body {
+.hero__readout {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem 1.15rem 1.15rem;
-  flex: 1;
-}
-
-.card--planned {
+  gap: 24px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line-strong);
   background: var(--surface-sunken);
-  border-color: var(--line);
-}
-
-.card--planned h3 {
-  color: var(--ink-soft);
-}
-
-.card h3 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-optical-sizing: auto;
-  font-size: 1.3rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-
-.card h3 a {
-  text-decoration: none;
-  color: var(--ink);
-}
-
-.card h3 a:hover {
-  color: var(--accent-ink);
-  text-decoration: underline;
-}
-
-.card p {
-  margin: 0;
-  font-size: 0.92rem;
-  color: var(--ink-soft);
-}
-
-.card__problem {
-  flex: 1;
-}
-
-.card__problem strong {
-  color: var(--ink);
-}
-
-.card--planned p {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
   color: var(--ink-faint);
 }
 
-/* The badge and the promise about time, on one line above the question. "base · ~5 min" is a
-   promise about how long this takes, not a score and not a level to grind — the lab has no
-   points and is not going to grow any. */
-.card__meta {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  flex-wrap: wrap;
+.hero__readout strong {
+  font-weight: 400;
+  color: var(--ink);
 }
 
-.card__level {
-  font-size: 0.76rem;
-  color: var(--ink-faint);
-  letter-spacing: 0.01em;
+.hero__readout .is-target {
+  margin-left: auto;
+  color: var(--accent);
 }
 
-/* The mission in one sentence a person can picture, in place of the fold that used to carry
-   `η < 1` and `4.5 mWb/m`. The quantities are not deleted — they are on the challenge page,
-   stated in words first and in symbols underneath, which is where the vocabulary to read them
-   is. A symbol on a card is a gate in front of a choice. ADR-022. */
-.card__mission {
-  margin-top: 0.35rem;
-  padding-top: 0.6rem;
+/* --------------------------------------------------------------- the challenges */
+
+/* Three full-cell links, no cards: meta row, the question, one mission line, the field. */
+.challenges {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--line);
   border-top: 1px solid var(--line);
-  font-size: 0.85rem;
-  color: var(--ink-soft);
 }
 
-.card__mission-label {
+.challenge {
   display: block;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-faint);
-  margin-bottom: 0.15rem;
-}
-
-/* ---------------------------------------------------------------- how to play */
-
-.how {
-  margin: 2.75rem 0 0;
-}
-
-.how > h2 {
-  margin-bottom: 0.9rem;
-}
-
-.how__steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 1.1rem;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-}
-
-.how__steps h3 {
-  margin: 0 0 0.25rem;
-  font-family: var(--font-text);
-  font-size: 0.95rem;
-  font-weight: 620;
-}
-
-.how__steps p {
-  margin: 0;
-  font-size: 0.92rem;
-  color: var(--ink-soft);
-}
-
-/* The one thing on the homepage worth saying about rigour, and the reason every challenge
-   page carries two indicators instead of one badge. */
-.how__note {
-  margin: 1.2rem 0 0;
-  padding-left: 0.8rem;
-  border-left: 2px solid var(--accent);
-  font-size: 0.92rem;
-  color: var(--ink-soft);
-  max-width: var(--measure);
-}
-
-/* ---------------------------------------------------------------- advanced shelf */
-
-/* Not a card and deliberately not shaped like one: a page listed here is a working lab, not a
-   challenge with a target, and giving it the same frame as the three above would say the
-   opposite. See ADR-022 and the note in index.html. */
-.shelf {
-  margin: 2.25rem 0 0;
-  padding-top: 1.1rem;
-  border-top: 1px solid var(--line);
-}
-
-.shelf > h2 {
-  margin: 0 0 0.3rem;
-  font-family: var(--font-text);
-  font-size: 0.95rem;
-  font-weight: 620;
-}
-
-.shelf__lead {
-  margin: 0 0 0.7rem;
-  font-size: 0.88rem;
-  color: var(--ink-faint);
-  max-width: var(--measure);
-}
-
-.shelf__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.shelf__list li {
-  display: grid;
-  gap: 0.1rem;
-  font-size: 0.88rem;
-  color: var(--ink-soft);
-}
-
-.shelf__list a {
-  font-weight: 560;
-}
-
-/* `.card__numbers`, `.card__facts` and `.card__topic` lived here until ADR-022 and are gone
-   rather than orphaned: the fold that held `η < 1` and `4.5 mWb/m` was removed from the cards
-   entirely, and `.card__mission` above is what replaced it. */
-
-.card__foot {
-  margin-top: 0.35rem;
-  font-size: 0.92rem;
-}
-
-.cta {
-  display: inline-block;
-  font-weight: 560;
+  padding: 28px 32px 32px;
+  color: var(--ink);
   text-decoration: none;
+  border-right: 1px solid var(--line);
 }
 
-.cta:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.challenges li:last-child .challenge {
+  border-right: 0;
 }
 
-.about {
-  margin: 2.5rem 0 0;
+.challenge:hover {
+  background: #10141a;
+  color: var(--ink);
 }
 
-.about .lesson__block {
-  margin-top: 0.5rem;
-}
-
-.badge {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+.challenge__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
-  border: 1px solid currentColor;
-  align-self: flex-start;
-}
-
-.badge--available {
-  color: var(--ok);
-}
-
-.badge--planned {
   color: var(--ink-faint);
 }
 
-.badge--mock {
-  color: var(--accent-ink);
+.challenge h2 {
+  margin: 18px 0 0;
+  font-size: 30px;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  font-weight: 700;
 }
 
-.badge--fenics {
-  color: var(--warn);
+.challenge__mission {
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.challenge__shot {
+  display: block;
+  margin-top: 22px;
+  height: 118px;
+  overflow: hidden;
+  background: var(--plate);
+}
+
+.challenge__shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ----------------------------------------------------------------- the loop strip */
+
+/* Predict, compute, compare — three words, which is what the three paragraphs of "how to
+   play" compressed into. The sentence on the right is the one thing worth keeping whole. */
+.loop {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px 56px;
+  padding: 26px 32px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.loop__index {
+  color: var(--accent);
+}
+
+.loop__note {
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-text);
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+
+/* ------------------------------------------------------------------ the method fold */
+
+/* What "How it works" opens: the method and the attribution, folded to two lines. This is
+   where the old `Method, code and data` / `How it is made` sections went. */
+.method {
+  padding: 18px 32px 26px;
+}
+
+.method .lesson__block {
+  max-width: 820px;
 }
 
 /* ================================================================= the bench
@@ -761,7 +703,7 @@ html[data-lang-pending] body {
   max-width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-sunken);
 }
 
@@ -784,7 +726,7 @@ html[data-lang-pending] body {
   font-size: 0.82rem;
   font-weight: 500;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--ink-soft);
   cursor: pointer;
@@ -798,7 +740,7 @@ html[data-lang-pending] body {
 
 .tool.is-active {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
 .tool:disabled {
@@ -814,7 +756,7 @@ html[data-lang-pending] body {
 .tool__swatch {
   width: 0.7rem;
   height: 0.2rem;
-  border-radius: 1px;
+  border-radius: 0;
   background: var(--swatch, currentColor);
   flex: none;
 }
@@ -920,9 +862,8 @@ fs-geometry-2d {
   grid-template-columns: 14px auto;
   gap: 0 0.4rem;
   padding: 0.4rem 0.5rem;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
-  backdrop-filter: blur(6px);
+  background: rgba(7, 9, 11, 0.78);
+  border: 1px solid var(--line-strong);
   pointer-events: none;
 }
 
@@ -933,7 +874,7 @@ fs-geometry-2d {
 .scale__bar {
   width: 14px;
   height: 150px;
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 .scale__ticks {
@@ -967,7 +908,7 @@ fs-geometry-2d {
   gap: 0.3rem 0.7rem;
   align-items: baseline;
   padding: 0.4rem 0.6rem;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface-sunken);
   font-size: 0.82rem;
 }
@@ -989,6 +930,13 @@ fs-geometry-2d {
 .workspace__field {
   display: grid;
   gap: 0.25rem;
+}
+
+/* `display: grid` above beats the `hidden` attribute, so the attribute needs saying again —
+   the same explicit rule `.workspace__scale` and `.workspace__readout` already carry. Without
+   it the cutting-plane panel is on the page before there is a solid to cut. */
+.workspace__field[hidden] {
+  display: none;
 }
 
 .workspace__fieldpick {
@@ -1368,7 +1316,7 @@ fs-geometry-2d {
   position: relative;
   height: 4px;
   margin-top: 0.3rem;
-  border-radius: 2px;
+  border-radius: 0;
   background: var(--surface-sunken);
   border: 1px solid var(--line);
   overflow: hidden;
@@ -1488,7 +1436,7 @@ fs-geometry-2d {
 .legend .swatch {
   width: 0.7rem;
   height: 0.7rem;
-  border-radius: 3px;
+  border-radius: 0;
   border: 1px solid currentColor;
   flex: none;
 }
@@ -1752,7 +1700,7 @@ input[type='number'] {
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--line-strong);
-  border-radius: 6px;
+  border-radius: 0;
 }
 
 .check {
@@ -1779,7 +1727,7 @@ button {
   font-size: 0.92rem;
   font-weight: 550;
   padding: 0.45rem 1rem;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--line-strong);
   background: var(--surface);
   color: var(--ink);
@@ -1798,7 +1746,7 @@ button:disabled {
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
 button.primary:hover:not(:disabled) {
@@ -2062,7 +2010,7 @@ input:focus-visible {
 .guide__heading:focus-visible {
   outline: 2px solid var(--spark);
   outline-offset: 3px;
-  border-radius: 3px;
+  border-radius: 0;
 }
 
 .guide__body {
@@ -2224,18 +2172,19 @@ input:focus-visible {
   vector-effect: non-scaling-stroke;
 }
 
-.figure__wing-edge {
-  stroke: var(--ink-soft);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-  fill: none;
-}
-
 .figure__plane {
   fill: color-mix(in srgb, var(--spark) 22%, transparent);
   stroke: var(--spark);
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
+}
+
+/* Where the cutting plane meets the wing: nose to tail, at one station along the span. */
+.figure__cut {
+  stroke: var(--spark);
+  stroke-width: 2.4;
+  vector-effect: non-scaling-stroke;
+  fill: none;
 }
 
 .figure__arrow {
@@ -2486,7 +2435,7 @@ input:focus-visible {
 .path__step.is-taken .path__index {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
 /* The prediction. A radio group, so arrow keys work and the browser owns the roving focus. */
@@ -2522,7 +2471,6 @@ input:focus-visible {
   gap: 0.4rem;
   padding: 0.35rem 0.7rem;
   border: 1px solid var(--line-strong);
-  border-radius: 999px;
   background: var(--surface-raised);
   font-size: 0.88rem;
   cursor: pointer;
@@ -2936,7 +2884,7 @@ input:focus-visible {
 .curve-legend .swatch {
   width: 0.85rem;
   height: 0.2rem;
-  border-radius: 1px;
+  border-radius: 0;
   display: inline-block;
 }
 
@@ -3021,4 +2969,780 @@ button.link:hover {
   color: var(--ink-soft);
   font-family: var(--font-mono);
   font-size: 0.78rem;
+}
+
+/* ============================================================ the instrument bench
+ *
+ * The redesigned bench (ADR-025): mission strip → instrument + rail → action bar → model
+ * details. Scoped under `.bench--instrument` so the pages that have not migrated keep the
+ * ADR-017 layout above. Order on the page is the order of the work: read the mission, set
+ * the three choices, compute, read the verdict, and only then open the details.
+ */
+
+.bench--instrument {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ------------------------------------------------------------------ the mission strip */
+
+.strip {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-sunken);
+}
+
+.strip__title {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.strip__constraint {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.strip__why {
+  margin-left: auto;
+  padding: 0 0 1px;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  background: none;
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.strip__why:hover {
+  color: #ffffff;
+  border-color: var(--ink-soft);
+}
+
+/* ------------------------------------------------------------------------- the drawers */
+
+/* Where the folded content opens: the mission's plain statement and lesson, and each of the
+   model-details rows. A drawer is page flow, not an overlay — nothing is ever covered. */
+.drawer {
+  padding: 20px 24px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.drawer[hidden] {
+  display: none;
+}
+
+.drawer > h2,
+.drawer__title {
+  margin: 0 0 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+.drawer .prose,
+.drawer .lesson__body,
+.drawer .challenge__statement {
+  max-width: var(--measure);
+}
+
+/* ------------------------------------------------------------------------ the main grid */
+
+.bench__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  min-height: 660px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* --- the instrument (left) */
+
+.bench--instrument .workspace {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: var(--surface-sunken);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+  padding: 72px 24px;
+}
+
+.bench--instrument .workspace::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(#141a21 1px, transparent 1px),
+    linear-gradient(90deg, #141a21 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none;
+}
+
+/* The bounded plate the field sits in. In production this box is the live `<fs-viewer>`
+   stage: it keeps `--domain-aspect` and the pan/zoom/probe behaviour, and simply stops
+   being full-bleed. */
+.bench--instrument .workspace__frame {
+  position: relative;
+  width: 700px;
+  max-width: calc(100% - 48px);
+  border: 1px solid var(--line-strong);
+  background: var(--plate);
+}
+
+.bench--instrument .workspace__stage {
+  border: 0;
+  border-radius: 0;
+  background: var(--plate);
+}
+
+/* --- the overlaid tool chips. All corners: tools top-left, scale top-right, layers
+       bottom-left, probe readout bottom-right. Every chip is the same dark plate. */
+
+.bench--instrument .workspace__hud {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  z-index: 3;
+  max-width: min(70%, 560px);
+}
+
+.bench--instrument .workspace__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.bench--instrument .toolgroup {
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line-strong);
+  background: rgba(7, 9, 11, 0.78);
+}
+
+.bench--instrument .tool {
+  padding: 7px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 0;
+  color: var(--ink-soft);
+}
+
+.bench--instrument .tool:hover:not(:disabled) {
+  background: transparent;
+  color: var(--ink);
+}
+
+.bench--instrument .tool.is-active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.bench--instrument .tool__icon {
+  display: none;
+}
+
+.bench--instrument .toolgroup--density {
+  margin-left: 0;
+  padding: 4px 10px;
+  text-transform: none;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.bench--instrument .toolgroup--density .tool__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* The field picker, folded into the toolbar as a compact select. Hidden until a result has
+   given it options: an empty menu is a broken-looking control that can do nothing. */
+.bench--instrument .workspace__fieldpick:has(select:empty) {
+  display: none;
+}
+
+.bench--instrument .workspace__fieldpick {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line-strong);
+  background: rgba(7, 9, 11, 0.78);
+}
+
+.bench--instrument .workspace__fieldpick select {
+  width: auto;
+  min-width: 0;
+  border: 0;
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+/* The annotation layers, bottom-left. Rendered by the workspace into `.workspace__layerbar`
+   when the page provides one. */
+.bench--instrument .workspace__layerbar {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line-strong);
+  background: rgba(7, 9, 11, 0.78);
+  max-width: min(75%, 640px);
+}
+
+.bench--instrument .workspace__layerbar:empty {
+  display: none;
+}
+
+.bench--instrument .workspace__layerbar .tool {
+  text-transform: none;
+  font-family: var(--font-text);
+  letter-spacing: 0;
+  padding: 7px 11px;
+}
+
+.bench--instrument .workspace__layerbar .tool.is-active {
+  background: transparent;
+  color: var(--ink);
+}
+
+.bench--instrument .workspace__layerbar .tool:not(.is-active) {
+  color: var(--ink-soft);
+}
+
+/* The colour scale, top-right of the instrument rather than of the plate. */
+.bench--instrument .workspace__scale {
+  top: 16px;
+  right: 16px;
+  z-index: 3;
+  padding: 8px;
+  grid-template-columns: 10px auto;
+  gap: 0 8px;
+}
+
+.bench--instrument .scale__bar {
+  width: 10px;
+  height: 160px;
+}
+
+.bench--instrument .scale__ticks {
+  height: 160px;
+  width: 3.2rem;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+}
+
+/* The probe readout, bottom-right, as a chip over the instrument. */
+.bench--instrument .workspace__readout {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 3;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: rgba(7, 9, 11, 0.78);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+/* --- the rail (right): your choices, the overflow, the reading */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface);
+}
+
+.rail__block {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rail__label {
+  margin: 0 0 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+.rail .field {
+  margin-bottom: 18px;
+}
+
+.rail .field__label {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.rail .field__value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.rail input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2px;
+  margin-top: 12px;
+  background: var(--line-strong);
+}
+
+.rail input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--ink);
+  cursor: pointer;
+}
+
+.rail input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--ink);
+  cursor: pointer;
+}
+
+.rail select,
+.rail input[type='number'] {
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+}
+
+/* Everything that is not one of the three main choices, behind one link-shaped summary. */
+.rail__more > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 16px 20px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.rail__more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.rail__more > summary:hover {
+  color: #ffffff;
+}
+
+.rail__more[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.rail__more {
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rail__more .group__body {
+  padding: 16px 20px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.rail__more h4 {
+  margin: 18px 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+/* The reading: two metrics, each a big tabular number against its goal. */
+.rail__reading {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1;
+  padding: 20px;
+}
+
+.rail__reading .kpis {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.rail__reading .kpi__name {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-soft);
+}
+
+.rail__reading .kpi__goal {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.rail__reading .kpi__reading {
+  margin-top: 2px;
+  gap: 0 6px;
+}
+
+.rail__reading .kpi__value {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.rail__reading .kpi__unit {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.rail__reading .kpi__bar {
+  height: 3px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 0;
+  background: var(--line);
+}
+
+.rail__reading .kpi.is-met .kpi__fill {
+  background: var(--accent);
+}
+
+.rail__reading .kpi.is-missed .kpi__fill {
+  background: var(--warn);
+}
+
+.rail__reading .kpi__note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.rail__reading .kpi.is-missed .kpi__note {
+  color: var(--warn);
+}
+
+/* The two credibility lights, pinned to the bottom of the rail. */
+.rail__lights {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.light {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.light--ok {
+  color: var(--accent);
+}
+
+.light--warn {
+  color: var(--warn);
+}
+
+.light--off {
+  color: var(--ink-faint);
+}
+
+.light:hover {
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ the prediction strip */
+
+/* Revealed inline the first time Compute is pressed with no stored answer. It never blocks
+   the solve — journey.js's rules stand: never gates, never scored, stays a radio group. */
+.predictbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.predictbar[hidden] {
+  display: none;
+}
+
+.predictbar .prediction__question {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.predictbar__dismiss {
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.predictbar__dismiss:hover {
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------------- the action bar */
+
+.bench--instrument .actionbar {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px 20px;
+  margin: 0;
+  padding: 14px 24px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-sunken);
+  box-shadow: none;
+}
+
+.bench--instrument .actionbar .primary {
+  padding: 13px 26px;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.bench--instrument .actionbar button:not(.primary) {
+  padding: 12px 20px;
+  font-size: 14px;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+}
+
+.bench--instrument .actionbar__status {
+  font-size: 13px;
+}
+
+.bench--instrument .actionbar__verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 46ch;
+}
+
+.bench--instrument .outcome {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.bench--instrument .outcome strong {
+  color: var(--ink);
+}
+
+.bench--instrument .outcome--missed strong {
+  color: var(--ink);
+}
+
+.bench--instrument .hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* The kept attempts, as chips. Clicking one loads it; `+ compare` opens the table. */
+.attempts {
+  display: contents;
+}
+
+.actionbar__attempts {
+  margin-left: auto;
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+}
+
+.bench--instrument .actionbar .chip {
+  padding: 4px 8px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.bench--instrument .actionbar .chip:hover {
+  border-color: var(--ink-faint);
+}
+
+.bench--instrument .actionbar .chip--more {
+  border-style: dashed;
+  color: var(--ink-faint);
+}
+
+/* ------------------------------------------------------------------- model details row */
+
+.details-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px 28px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.details-row__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.details-row button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.details-row button:hover {
+  color: #ffffff;
+}
+
+.details-row button[aria-expanded='true'] {
+  color: var(--accent);
+}
+
+/* The 640px rule above hides tool labels to save toolbar rows; on the instrument bench the
+   labels ARE the buttons (the icons are off), so they stay. */
+@media (max-width: 640px) {
+  .bench--instrument .toolgroup .tool__label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: nowrap;
+  }
+}
+
+/* ------------------------------------------------------------------------ responsive */
+
+@media (max-width: 1100px) {
+  .bench__main {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .bench--instrument .workspace {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 64px 16px;
+  }
+
+  .bench--instrument .actionbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding: 40px 24px;
+  }
+
+  .hero__panel {
+    order: -1;
+  }
+
+  .challenges {
+    grid-template-columns: 1fr;
+  }
+
+  .challenge {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .challenges li:last-child .challenge {
+    border-bottom: 0;
+  }
 }

@@ -23,26 +23,26 @@ export default {
   },
 
   brand: {
+    // La tagline che ADR-016 fissava e ADR-022 sostituiva non c'è più: l'header porta solo il
+    // marchio, e ora è la hero della home a fare l'affermazione. ADR-025.
     name: 'Spoon Physics',
-    // ADR-016 fissava la vecchia tagline come affermazione non negoziabile del prodotto. La
-    // revisione editoriale la sostituisce di proposito: quella descriveva il solutore, questa
-    // descrive che cosa ci fai. Vedi ADR-022.
-    tagline: 'Sfide di fisica. Calcoli reali. Risultati da discutere.',
   },
 
   nav: {
     label: 'Sezioni del laboratorio',
-    experiments: 'Sfide',
-    how: 'Come si gioca',
     code: 'Codice',
+    details: 'Dettagli del modello',
   },
 
   footer: {
+    advanced: 'Laboratorio avanzato',
     builtWith: 'Costruito con ',
     and: ' e ',
-    notAffiliated: '. Non affiliato al FEniCS Project.',
-    source: 'Codice sorgente su GitHub',
+    notAffiliated: 'Non affiliato al FEniCS Project.',
+    source: 'Sorgente',
     licence: ' · MIT',
+    // Una frase al posto del riquadro di avvertenza che ogni pagina portava.
+    caveat: 'Modelli per esplorare idee, non strumenti di progetto professionale.',
   },
 
   stats: {
@@ -81,6 +81,9 @@ export default {
   /* ------------------------------------------------------------ la struttura delle pagine */
 
   experiment: {
+    sliceFailed: 'Il server non è riuscito a tagliare quel piano (HTTP {status}).',
+    sliceMismatch:
+      'Due tagli dello stesso piano sono tornati su griglie diverse, quindi non ne viene disegnato nessuno.',
     pageTitle: '{title} — Spoon Physics',
     notSet: 'non impostato',
     submitting: 'Invio in corso…',
@@ -147,6 +150,10 @@ export default {
       unchecked: 'non controllato',
       caution: 'con cautela',
       no: 'no',
+      /* Gli stati positivi delle due spie del pannello. Gli stati negativi riusano le parole
+         qui sopra, così le due rese dello stesso indicatore non possono contraddirsi. */
+      settled: 'stabile',
+      inRange: 'nei limiti',
       numericWhat:
         'Dice se il risultato cambia poco quando il calcolo viene raffinato o confrontato per una seconda via.',
       physicalWhat:
@@ -163,6 +170,10 @@ export default {
       above: 'Sei oltre il limite di {delta}.',
       below: 'Mancano {delta} al minimo.',
       barAria: '{value} su un limite di {limit}',
+      /* L'obiettivo come lo dichiara la riga dell'etichetta: "su 800 N/m", "sotto 0,080". */
+      goalOf: 'su {value} {unit}',
+      goalUnder: 'sotto {value} {unit}',
+      goalAtLeast: 'almeno {value} {unit}',
     },
   },
 
@@ -178,6 +189,7 @@ export default {
   prediction: {
     heading: 'Prima di calcolare',
     unknown: 'Non so ancora',
+    dismiss: 'Non ora',
     note: 'La previsione non influisce sul calcolo. Serve soltanto per confrontare ciò che ti aspettavi con ciò che è successo.',
     youSaid: 'Avevi previsto:',
   },
@@ -246,16 +258,11 @@ export default {
       label: 'Modifica forma',
       title: 'Mostra e trascina i punti di controllo della geometria',
     },
-    zoomOut: { label: 'Riduci', why: 'Già inquadrato.' },
-    zoomIn: {
-      label: 'Ingrandisci',
-      why: 'Al limite: oltre questo si ingrandisce la griglia di campionamento, non il campo.',
-    },
+    /* Ingrandisci, riduci e reimposta sono confluiti in Inquadra più rotella e tastiera — ADR-025. */
     fit: {
-      label: 'Inquadra il corpo',
+      label: 'Inquadra',
       why: 'Non c’è nulla da inquadrare finché la geometria non è nota.',
     },
-    reset: { label: 'Reimposta vista' },
     vectors: {
       label: 'Vettori',
       title: 'Frecce del campo di velocità',
@@ -287,73 +294,52 @@ export default {
   home: {
     title: 'Spoon Physics — sfide di fisica interattiva',
     description:
-      'Piccole sfide di fisica interattiva: fai una previsione, cambia il progetto, calcola il risultato e confronta i tentativi con i limiti del modello.',
-    heroHeading: 'Fai una previsione. Mettila alla prova.',
-    lede: 'Scegli una sfida, cambia pochi parametri e guarda che cosa prevede il modello. Salva i tentativi, confrontali e scopri dove la simulazione smette di essere credibile.',
+      'Tre sfide di fisica, risolte su un vero server a elementi finiti mentre guardi. Prima prevedi, poi calcola, e confronta i tentativi con i limiti del modello.',
+    /* Tutto ciò che dice la striscia di lettura della hero è vero della miniatura accanto —
+       il campo, l'incidenza e la velocità con cui scripts/make-thumbnails.py l'ha risolta. */
+    eyebrow: 'Soluzione reale · metodo a pannelli',
+    heroLine1: 'Prima prevedi.',
+    heroLine2: 'Poi calcolalo.',
+    lede: 'Tre sfide di fisica, risolte su un vero server a elementi finiti mentre guardi.',
+    openWing: 'Apri l’ala →',
+    howItWorks: 'Come funziona',
+    target: 'Obiettivo 800 N/m',
     experiments: 'Sfide',
-    badgeExercise: 'Sfida',
-    badgePlanned: 'In preparazione',
-    missionSummary: 'La sfida',
+    howHeading: 'Come si gioca',
+
+    /* La striscia del ciclo: prevedi, calcola, confronta — e l'unica frase da tenere intera. */
+    loop1: 'Prevedi',
+    loop2: 'Calcola',
+    loop3: 'Confronta',
+    loopNote: 'Un numero può essere calcolato bene e descrivere male la realtà.',
 
     airfoil: {
-      name: 'Trova l’assetto dell’ala',
+      domain: '01 / Aerodinamica',
+      time: '5–8 min',
       question: 'Quanta inclinazione serve a un’ala?',
-      topic: 'Aerodinamica · 5–8 min',
-      problem:
-        'Scegli un profilo e regola l’angolo per ottenere la portanza richiesta senza farlo ruotare troppo. Profili diversi possono arrivare allo stesso risultato in modi diversi.',
-      mission: 'Sostieni l’equivalente di circa 80 kg per ogni metro di ala.',
-      cta: 'Prova con un’ala →',
+      mission: 'Sostieni circa 80 kg per ogni metro di ala.',
     },
     truss: {
-      name: 'Costruisci un ponte che regga',
+      domain: '02 / Strutture',
+      time: '8–12 min',
       question: 'Quale asta cede per prima?',
-      topic: 'Strutture · 8–12 min',
-      problem:
-        'Disegna un ponte di 24 metri, porta il traffico e resta sotto il budget di acciaio. Prima del calcolo indica l’asta che pensi sia più fragile.',
-      mission: 'Circa 10 tonnellate distribuite, con al massimo 2,4 tonnellate di acciaio.',
-      cta: 'Costruisci il ponte →',
+      mission: '10 tonnellate sull’impalcato, al massimo 2,4 tonnellate di acciaio.',
     },
     heatsink: {
-      name: 'Quante alette servono davvero?',
+      domain: '03 / Calore',
+      time: '6–10 min',
       question: 'Più alette raffreddano sempre meglio?',
-      topic: 'Calore · 6–10 min',
-      problem:
-        'Prova a prevedere quante alette servono, poi lascia che il calcolo esplori le alternative. Troppo poche disperdono poco calore; troppe possono soffocare il passaggio dell’aria.',
-      mission: 'Tieni un componente da 30 W sotto 95 °C usando al massimo 170 g di alluminio.',
-      cta: 'Progetta il dissipatore →',
+      mission: '30 W sotto 95 °C, con 170 g di alluminio.',
     },
+    /* Il laboratorio avanzato: ora un collegamento nel footer, non uno scaffale. */
     solenoid: {
       name: 'Campo magnetico in una sezione 2D',
-      question: 'Campo magnetico in una sezione 2D',
-      topic: 'Magnetostatica',
-      problem:
-        'Porta un flusso richiesto attraverso un nucleo di ferro con un budget di amperspire, e guarda quanto se ne disperde nell’aria.',
-      mission: 'Pensato per chi conosce già flusso, campo e circuiti magnetici.',
-      cta: 'Apri il laboratorio →',
     },
-
-    howHeading: 'Come si gioca',
-    step1Heading: '1. Prevedi',
-    step1:
-      'Scegli che cosa pensi succederà. Non serve indovinare: la previsione serve per avere qualcosa da confrontare.',
-    step2Heading: '2. Calcola',
-    step2:
-      'Cambia pochi parametri e avvia il calcolo. Il campo e i numeri vengono ricavati dalla configurazione che hai scelto.',
-    step3Heading: '3. Confronta',
-    step3:
-      'Salva almeno due tentativi. Cerca che cosa è cambiato, quale vincolo decide il risultato e dove il modello non basta più.',
-    howNote:
-      '<strong>Un numero può essere calcolato bene e descrivere male la realtà.</strong> Per questo ogni tentativo distingue la stabilità del calcolo dai limiti del modello.',
-
-    advancedHeading: 'Laboratori avanzati',
-    advancedLead:
-      'Pagine costruite per chi conosce già il tema. Non sono sfide con una missione da centrare.',
 
     disclaimerLabel: 'Nota.',
     disclaimer:
       'Questi modelli servono per esplorare idee e confrontare soluzioni. Non sono strumenti di progetto professionale.',
 
-    aboutHeading: 'Come si gioca',
     methodSummary: 'Metodo, codice e dati',
     methodBody:
       'Le risposte non sono animazioni predefinite: vengono calcolate dalla configurazione corrente. Ogni sfida usa il modello più adatto e rende disponibili controlli numerici, grandezze complete ed esportazione dei dati. Il codice del laboratorio è open source.',
@@ -403,7 +389,10 @@ export default {
     fieldShown: 'Campo mostrato',
     configure: 'Cambia il progetto',
     design: 'Le tue scelte',
+    reading: 'Lettura',
+    more: 'Forma, aria e numerica',
     conditions: 'Condizioni della prova',
+    numericsHeading: 'Numerica',
     whatFollows: 'Valori ricavati',
     advanced: 'Altri controlli',
     advancedError:
@@ -422,9 +411,13 @@ export default {
     keptRuns: 'I tuoi tentativi',
     exportCsv: 'Esporta CSV',
     exportJson: 'Esporta JSON',
+    exportData: 'Esporta CSV / JSON',
     deleteAll: 'Elimina tutto',
+    compareChip: '+ confronta',
     why: 'Perché succede',
     lesson: 'Dettagli del modello',
+    modelLimits: 'Il modello e i suoi limiti',
+    checksRun: 'Controlli su questa prova',
     lessonLead:
       'Formule, condizioni al contorno, controlli ed esportazione. Non serve leggerli per giocare: servono quando vuoi sapere come è stato calcolato.',
     maintenance:
@@ -439,19 +432,13 @@ export default {
       lift: 'Portanza: 800 N per metro, con uno scarto del 2 %',
       twist: 'Tendenza a ruotare: sotto il limite',
     },
-    /* I tre risultati principali (§7.5) e i suggerimenti dopo un tentativo fallito (§7.7). */
+    /* Le due letture del pannello (ADR-025) e i suggerimenti dopo un tentativo fallito (§7.7). */
     headline: {
       lift: 'Portanza',
-      perMetre: 'N per metro',
       liftHint: 'Portanza per metro di apertura, dalla pressione integrata su tutta la superficie.',
-      twist: 'Tendenza a ruotare',
+      twist: 'Rotazione',
       twistHint:
         'Momento di beccheggio rispetto al quarto di corda, rispetto al limite della sfida.',
-      noseDown: 'Tende a ruotare verso il basso.',
-      noseUp: 'Tende a ruotare verso l’alto.',
-      suction: 'Pressione più severa',
-      suctionNote: 'Non è un obiettivo. Dice quanto sono concentrate le variazioni di pressione.',
-      suctionHint: 'Il coefficiente di pressione più basso su tutta la superficie.',
     },
     hint: {
       lowLift: 'La portanza è bassa. Cambia prima l’angolo e lascia fermo il profilo.',
@@ -479,10 +466,15 @@ export default {
     title: 'Trova l’assetto dell’ala — Spoon Physics',
     description:
       'Una sfida di fisica: scegli il profilo, regola l’angolo e fai sostenere all’ala la portanza richiesta senza farla ruotare troppo. Prima prevedi, poi calcola e confronta i tentativi.',
-    eyebrow: 'Profilo, angolo e distribuzione di pressione',
-    heading: 'Trova l’assetto dell’ala',
+    /* La striscia della missione: tutto l'incarico in una riga, e la via verso il resto. */
+    missionHeading: 'Falla portare 800 N per metro.',
+    missionConstraint: 'entro il 2 % · |C_m,c/4| < 0,08',
+    whyTarget: 'Perché questo obiettivo?',
+    crumb: '/ 01 L’ala',
     editorAria: 'Profilo alare: punti di controllo trascinabili',
     profile: 'Profilo',
+    shapeHeading: 'Forma',
+    shapeTool: 'Forma',
     editShape: 'Modifica forma',
     doneEditing: 'Fine modifica',
     resetProfile: 'Reimposta profilo',
@@ -492,10 +484,10 @@ export default {
     studyHeading: 'Studio',
     studyLead:
       'Una sola incidenza, o una scansione. La scansione è l’unico modo per ottenere un centro aerodinamico, e costa una soluzione invece di una per angolo.',
-    advancedNote: 'numerica e studio',
     noDrag:
       'Nessuna resistenza e nessuna efficienza: questo modello è non viscoso, quindi entrambe sono nulle e un rapporto fra zeri non è una grandezza. La forza lungo la corda che esce dall’integrazione delle pressioni è nel pannello di verifica, dove le compete — è una barra d’errore.',
     surfacePressure: 'Pressione sulla superficie',
+    pressureCurve: 'Curva di pressione sulla superficie',
     acrossSweep: 'Lungo la scansione',
     sweepNote:
       'Il centro aerodinamico è la pendenza di regressione del momento di beccheggio rispetto alla portanza, sottratta al quarto di corda. La teoria del profilo sottile dice 0,25; lo spessore lo sposta leggermente all’indietro. L’R² della regressione è mostrato perché una retta attraverso una curva non è un punto.',
@@ -1131,6 +1123,32 @@ export default {
       'Una sfida di fisica: tieni fresco un componente da 30 W con un budget di massa, e trova il numero di alette oltre il quale aggiungerne peggiora le cose. Prova a prevedere dove sta l’ottimo prima di calcolarlo.',
     eyebrow: 'Superficie, passaggio dell’aria e massa',
     heading: 'Quante alette servono davvero?',
+    planeLabel: 'Taglio',
+    planeAria: 'Piano di taglio attraverso il solido',
+    planePosition: 'Dove',
+    planePositionTitle: 'Dove si trova il piano lungo la sua normale.',
+    plane: {
+      z: 'Di traverso — la sezione trasversale',
+      y: 'Attraverso la base — dove sta la diffusione',
+      x: "Lungo un'aletta",
+    },
+    planeNote: {
+      z: 'Una sezione trasversale a {position} mm lungo la lunghezza. È la figura che disegna il solutore sulla sezione, e lontano dal componente non è la stessa.',
+      y: 'Un taglio nel metallo a {position} mm sopra la base. Il gradiente lungo la lunghezza è la resistenza di diffusione, vista direttamente.',
+      x: "Un taglio a {position} mm sulla base, guardando lungo l'estruso.",
+    },
+    modelHeading: 'Sezione o solido',
+    modelLead:
+      'La sezione trasversale è esatta per un estruso e assume che il componente lo scaldi in modo uniforme su tutta la lunghezza. Risolvi invece il corpo e il componente può essere più corto del dissipatore — il che costa una resistenza di diffusione, e guadagna due estremità tagliate.',
+    modelPick: 'Cosa si risolve',
+    model: {
+      section: 'La sezione trasversale',
+      solid: 'Il corpo intero',
+      sectionNote:
+        "Si assume che il componente scaldi la base uniformemente su tutta la lunghezza. Esatto per la conduzione, ed è l'ipotesi che un componente reale rompe.",
+      solidNote:
+        'Il componente copre il {covered}% della lunghezza. Il resto della base deve raggiungere le sue alette di lato, e le due estremità tagliate sono superficie che la sezione non aveva.',
+    },
     schematicTitle: "Sezione del dissipatore: base alettata con sotto l'impronta del componente",
     legendMetal: 'alluminio',
     legendAir: 'aria',
@@ -1187,6 +1205,12 @@ export default {
         "Aria ferma, o una ventola lungo l'estrusione. Il numero di alette migliore non è lo stesso.",
       velocity: "Velocità dell'aria",
       velocityTitle: 'Velocità frontale lungo i canali.',
+      depth: 'Lunghezza estrusa',
+      depthTitle:
+        'Quanto è lungo il pezzo di estruso. È sempre stata parte della risposta — ogni watt e ogni grammo è per unità di profondità moltiplicato per questa — e dove viaggia dipende da cosa si risolve.',
+      footprintDepth: 'Lunghezza del componente',
+      footprintDepthTitle:
+        'Quanta di quella lunghezza il componente tocca davvero. Il solutore sulla sezione non ha dove metterla; quello sul solido è costruito attorno a questa.',
       flush: 'Montato a contatto',
       flushHint:
         'Con la faccia inferiore bloccata dal montaggio, non perde nulla da lì. Senza spunta, la base raffredda anche di sotto.',
@@ -1222,6 +1246,11 @@ export default {
       viewFactor: 'Fattore di vista verso la stanza',
       h: 'Coefficiente di convezione',
       flux: 'Flusso conduttivo massimo',
+      extruded: 'Resistenza, modello estruso',
+      spreading: 'Resistenza di diffusione',
+      endGain: 'Quanto restituiscono le due estremità',
+      endLoss: 'Calore uscito dalle estremità',
+      needsSolid: 'serve il corpo intero',
     },
     checks: {
       energy: 'Bilancio energetico',
@@ -1242,6 +1271,7 @@ export default {
       mass: 'massa kg',
       radiative: 'quota rad.',
       energy: 'energia',
+      depthCorrection: 'correzione 3-D',
     },
     shapeLabel: '{fins} alette · alte {height} mm · spesse {thickness} mm · base {base} mm',
     plots: {

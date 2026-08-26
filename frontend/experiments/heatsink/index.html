@@ -5,7 +5,7 @@
 <title data-i18n="heatsink.title">The heat sink — Spoon Physics</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" data-i18n-attr="content: heatsink.description" content="A thermal design exercise: keep a power device below its rating on a mass budget, with conduction, convection taken from the channel between the fins and radiation exchanged through it — and find the fin count where adding more starts making it worse.">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 <link rel="alternate" hreflang="en" href="/experiments/heatsink/?lang=en">
 <link rel="alternate" hreflang="it" href="/experiments/heatsink/?lang=it">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
@@ -34,15 +34,19 @@
   }, 2000);
 })();
 </script>
-<!-- Two packages, as on the solenoid and for the same reason: `<fs-geometry-2d>` edits a
-     `domain2d` outline, and this profile is a set of filled rectangles described by the
-     quantities an engineer would name — base, fin count, fin thickness, fin height. Those are
-     the controls, and the section is drawn from them. See ADR-009 and ADR-012. -->
+<!-- No geometry editor here, as on the solenoid and for the same reason:
+     `<fs-geometry-2d>` edits a `domain2d` outline, and this profile is a set of filled
+     rectangles described by the quantities an engineer would name — base, fin count, fin
+     thickness, fin height. Those are the controls, and the section is drawn from them. The
+     last entry is a *module* rather than a package: `shared/curve.js` takes
+     `@fenix-spoon/plot`'s axis arithmetic and not its element (ADR-024). See ADR-009 and
+     ADR-012. -->
 <script type="importmap">
 {
   "imports": {
     "@fenix-spoon/client": "/vendor/fenix-spoon/client/index.js",
-    "@fenix-spoon/viewer": "/vendor/fenix-spoon/viewer/index.js"
+    "@fenix-spoon/viewer": "/vendor/fenix-spoon/viewer/index.js",
+    "@fenix-spoon/plot/scale.js": "/vendor/fenix-spoon/plot/scale.js"
   }
 }
 </script>
@@ -123,6 +127,17 @@
         </label>
         <p class="field__hint" id="field-hint"></p>
       </div>
+
+      <!-- A solid is seen by cutting it: the viewer draws `grid2d`, and a `slice` through a
+           `mesh3d` is one. Hidden for a section, which is already a plane. -->
+      <div class="workspace__field" id="plane-panel" hidden>
+        <label class="workspace__fieldpick" for="plane-axis">
+          <span data-i18n="heatsink.planeLabel">Cut</span>
+          <select id="plane-axis" aria-label="Cutting plane" data-i18n-attr="aria-label: heatsink.planeAria"></select>
+        </label>
+        <div id="plane-position"></div>
+        <p class="field__hint" id="plane-note"></p>
+      </div>
     </section>
 
     <form class="controls" id="controls" aria-labelledby="controls-heading" onsubmit="return false">
@@ -157,6 +172,22 @@
         </div>
       </section>
 
+      <section class="group" aria-labelledby="model-heading">
+        <h3 id="model-heading" data-i18n="heatsink.modelHeading">Section or solid</h3>
+        <p class="field__hint" data-i18n="heatsink.modelLead">
+          The cross-section is exact for an extrusion and assumes the device heats it evenly
+          along its whole length. Solve the body instead and the device can be shorter than the
+          sink — which costs a spreading resistance, and gains two cut ends.
+        </p>
+        <div class="field">
+          <label class="field__label" for="solver"><span data-i18n="heatsink.modelPick">What is solved</span></label>
+          <select id="solver" aria-label="Solver" data-i18n-attr="aria-label: bench.solverLabel"></select>
+          <p class="field__hint" id="solver-hint"></p>
+        </div>
+        <div id="solid-controls"></div>
+        <p class="field__hint" id="solid-note" hidden></p>
+      </section>
+
       <section class="group" aria-labelledby="conditions-heading">
         <h3 id="conditions-heading" data-i18n="bench.conditions">Conditions</h3>
         <div id="conditions"></div>
@@ -185,8 +216,6 @@
             radiation off, or pinning the convection coefficient, is how you see what the
             simpler model would have told you — and every run that uses one says so.
           </p>
-          <p class="field__hint" id="solver-hint"></p>
-          <select id="solver" aria-label="Solver" hidden data-i18n-attr="aria-label: bench.solverLabel"></select>
         </div>
       </details>
     </form>

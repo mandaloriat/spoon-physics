@@ -5,7 +5,7 @@
 <title data-i18n="solenoid.title">The magnetic circuit — Spoon Physics</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" data-i18n-attr="content: solenoid.description" content="A magnetics design exercise: carry a required flux through an iron core on an ampere-turn budget, with computed fields, engineering metrics and a verification residual on every run.">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 <link rel="alternate" hreflang="en" href="/experiments/solenoid/?lang=en">
 <link rel="alternate" hreflang="it" href="/experiments/solenoid/?lang=it">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
@@ -35,16 +35,19 @@
 })();
 </script>
 <!-- The Fenix Spoon browser packages, vendored from the pinned commit by
-     scripts/fetch-widgets.sh (or by the Docker build's node stage). Two packages here, not
-     three: this experiment's geometry is a set of material regions, and `<fs-geometry-2d>`
-     produces `domain2d` — one polygon cut out of a rectangle — so it has nothing to edit
-     here. The cross-section is built from physical sliders instead, and drawn as its own
-     diagram. See docs/architecture-decisions.md, ADR-009 and ADR-012. -->
+     scripts/fetch-widgets.sh (or by the Docker build's node stage). No geometry editor here:
+     this experiment's geometry is a set of material regions, and `<fs-geometry-2d>` produces
+     `domain2d` — one polygon cut out of a rectangle — so it has nothing to edit. The
+     cross-section is built from physical sliders instead, and drawn as its own diagram. The
+     last entry is a *module* rather than a package: `shared/curve.js` takes
+     `@fenix-spoon/plot`'s axis arithmetic and not its element (ADR-024). See
+     docs/architecture-decisions.md, ADR-009 and ADR-012. -->
 <script type="importmap">
 {
   "imports": {
     "@fenix-spoon/client": "/vendor/fenix-spoon/client/index.js",
-    "@fenix-spoon/viewer": "/vendor/fenix-spoon/viewer/index.js"
+    "@fenix-spoon/viewer": "/vendor/fenix-spoon/viewer/index.js",
+    "@fenix-spoon/plot/scale.js": "/vendor/fenix-spoon/plot/scale.js"
   }
 }
 </script>

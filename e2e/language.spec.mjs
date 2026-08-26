@@ -16,10 +16,11 @@ import { expect, test } from '@playwright/test';
 const EXPERIMENTS = [
   {
     name: 'airfoil',
-    heading: /assetto dell.ala/i,
+    // The instrument bench opens on the mission strip, not a page title (ADR-025).
+    heading: /800 N per metro/i,
     // One sentence from each of the three places a page's words come from: the markup
     // (`data-i18n`), the script (`t(...)`), and the lesson file (`content.it.json`).
-    markup: { selector: '#controls-heading', text: 'Cambia il progetto' },
+    markup: { selector: '#controls-heading', text: 'Le tue scelte' },
     script: { selector: '#shape-note', text: 'curvatura' },
     lesson: 'equazione di Laplace',
   },
@@ -50,44 +51,39 @@ test('the homepage reads in English until the switch is used', async ({ page }) 
   await page.goto('/');
 
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  // The heading is the invitation now, not the product's claim — the claim moved to the
-  // line above it and keeps its wording (ADR-016). Both are asserted, because the point of
-  // this test is that the *page* changed language, not that one string did.
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Make a prediction');
-  await expect(page.locator('.hero__tagline')).toContainText('Physics challenges');
+  // The hero is the claim now (ADR-025). Two strings are asserted, because the point of this
+  // test is that the *page* changed language, not that one string did.
+  await expect(page.getByRole('heading', { level: 1 }).first()).toContainText('Guess first');
+  await expect(page.locator('.hero .lede')).toContainText('Three physics challenges');
 
   await page.getByRole('link', { name: 'Italiano' }).click();
 
   await expect(page.locator('html')).toHaveAttribute('lang', 'it');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Fai una previsione');
-  await expect(page.locator('.hero__tagline')).toContainText('Sfide di fisica');
-  // The disclaimer is a requirement of the project, so it is a requirement in both languages.
-  await expect(page.locator('.disclaimer')).toContainText('progetto professionale');
-  // A card's prose carries inline markup, which takes the other rendering path. Asserting the
-  // `<strong>` as well as the words, because the words alone would pass just as happily if
-  // `data-i18n-html` had quietly become `data-i18n` and the markup were being escaped.
-  await expect(page.locator('.card__problem').first()).toContainText('portanza');
-  // `data-i18n-html` still has a job on this page: the note under "Come si gioca" carries a
-  // `<strong>`, and asserting the element as well as the words is what would catch it quietly
-  // becoming `data-i18n` and escaping its own markup.
-  await expect(page.locator('.how__note strong')).toContainText('calcolato bene');
+  await expect(page.getByRole('heading', { level: 1 }).first()).toContainText('Prima prevedi');
+  await expect(page.locator('.hero .lede')).toContainText('Tre sfide di fisica');
+  // The caveat is a requirement of the project, so it is a requirement in both languages.
+  await expect(page.locator('.site-footer__caveat')).toContainText('progetto professionale');
+  // `data-i18n-html` still has a job on this page: the method list carries `<strong>`, and
+  // asserting the element as well as the words is what would catch it quietly becoming
+  // `data-i18n` and escaping its own markup.
+  await expect(page.locator('#method li strong').first()).toContainText('Ala');
 
   await page.getByRole('link', { name: 'English' }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Make a prediction');
-  await expect(page.locator('.hero__tagline')).toContainText('Physics challenges');
+  await expect(page.getByRole('heading', { level: 1 }).first()).toContainText('Guess first');
+  await expect(page.locator('.hero .lede')).toContainText('Three physics challenges');
 });
 
 test('the choice follows an ordinary link, with no query string on it', async ({ page }) => {
   await page.goto('/?lang=it');
   await expect(page.locator('html')).toHaveAttribute('lang', 'it');
 
-  // The card's own link, which carries no `lang` — only the stored choice can carry it across.
-  await page.getByRole('link', { name: /Prova con un.ala/ }).click();
+  // The cell's own link, which carries no `lang` — only the stored choice can carry it across.
+  await page.locator('.challenge[href="/experiments/airfoil/"]').click();
 
   await expect(page).toHaveURL(/experiments\/airfoil\/$/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'it');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(/assetto dell.ala/i);
+  await expect(page.getByRole('heading', { level: 1 }).first()).toContainText(/800 N per metro/i);
 });
 
 test.describe('every bench reads in Italian', () => {
@@ -98,13 +94,17 @@ test.describe('every bench reads in Italian', () => {
 
       await page.goto(`/experiments/${experiment.name}/?lang=it`);
 
-      await expect(page.getByRole('heading', { level: 1 })).toContainText(experiment.heading);
+      await expect(page.getByRole('heading', { level: 1 }).first()).toContainText(
+        experiment.heading,
+      );
       await expect(page.locator(experiment.markup.selector)).toContainText(experiment.markup.text);
       await expect(page.locator(experiment.script.selector)).toContainText(experiment.script.text);
       await expect(page.locator('#lesson')).toContainText(experiment.lesson);
 
       // The shared renderers, which every page gets from `shared/` rather than writing.
-      await expect(page.locator('.workspace__toolbar')).toContainText('Reimposta vista');
+      // Zoom in/out/reset folded into Fit plus wheel and keyboard (ADR-025), so the tool
+      // whose wording is asserted is the one that remains.
+      await expect(page.locator('.workspace__toolbar')).toContainText('Inquadra');
       await expect(page.locator('#runs-table')).toContainText('Non hai ancora salvato tentativi');
       await expect(page.locator('#challenge')).toContainText('non ancora calcolato');
       await expect(page.locator('.path__step').first()).toContainText('Prevedi');
@@ -124,7 +124,7 @@ test('a browser that prefers Italian is not made to ask', async ({ browser }) =>
 
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('lang', 'it');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Fai una previsione');
+  await expect(page.getByRole('heading', { level: 1 }).first()).toContainText('Prima prevedi');
 
   // Detected, never stored — so an explicit English choice still wins, and still sticks.
   await page.getByRole('link', { name: 'English' }).click();

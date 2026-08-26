@@ -65,16 +65,21 @@ else
 fi
 
 # ---------------------------------------------------------------- 3. homepage & experiments
+# Substring tests in the shell itself, never `printf | grep -q`: under `pipefail`, grep
+# exiting at the first match can hand printf an EPIPE and fail a check that *found* what it
+# was looking for. It bit for real the day a page started naming its widget earlier in the
+# markup — the closer the match is to the top, the likelier the false negative.
 for path in "/" "/experiments/airfoil/" "/experiments/solenoid/"; do
   BODY=$(curl -fsS --max-time 15 "$BASE_URL$path" 2>&1)
-  if [ $? -eq 0 ] && printf '%s' "$BODY" | grep -q "Spoon Physics"; then
+  if [ $? -eq 0 ] && [[ "$BODY" == *"Spoon Physics"* ]]; then
     pass "$path is served"
   else
     fail "$path is served"
   fi
 done
 
-if printf '%s' "$(curl -fsS --max-time 15 "$BASE_URL/experiments/airfoil/")" | grep -q "fs-geometry-2d"; then
+AIRFOIL=$(curl -fsS --max-time 15 "$BASE_URL/experiments/airfoil/" 2>&1)
+if [[ "$AIRFOIL" == *"fs-geometry-2d"* ]]; then
   pass "the airfoil page embeds the Fenix Spoon widgets"
 else
   fail "the airfoil page embeds the Fenix Spoon widgets"
@@ -82,7 +87,8 @@ fi
 
 # The magnetics page renders a field but edits no outline, so it embeds the viewer and not the
 # geometry editor — checking for the wrong one would pass on a page that cannot work.
-if printf '%s' "$(curl -fsS --max-time 15 "$BASE_URL/experiments/solenoid/")" | grep -q "fs-viewer"; then
+MAGNETICS=$(curl -fsS --max-time 15 "$BASE_URL/experiments/solenoid/" 2>&1)
+if [[ "$MAGNETICS" == *"fs-viewer"* ]]; then
   pass "the magnetics page embeds the field viewer"
 else
   fail "the magnetics page embeds the field viewer"

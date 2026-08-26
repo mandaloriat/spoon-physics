@@ -20,11 +20,22 @@
  * fit inside; the profile itself travels in `params`, because the correlation needs the channel
  * width and recovering that from a list of rectangles would be inferring a quantity from a
  * picture (ADR-019, and the adapter's own docstring).
+ *
+ * **The page asks the same question in two dimensions or three, and the choice is a real one.**
+ * `lab.heatsink2d` solves the cross-section: exact for an extrusion, fast enough for the twenty
+ * solves the fin-count sweep needs, and built on the assumption that the device heats the base
+ * evenly along the whole length. `lab.heatsink3d` solves the body, so the device can be shorter
+ * than the sink — which is what a real one is. The two are separate capabilities because their
+ * *geometry kinds* differ, and that is what lets each refuse the other's payload instead of
+ * answering a different problem confidently (ADR-023).
+ *
+ * A solid needs no new rendering here: the viewer draws `grid2d`, a `slice` through a `mesh3d`
+ * is one, and the plane control below the field picker is the whole of the difference.
  */
 
 import '@fenix-spoon/viewer';
 
-import { solversFor } from '/shared/api.js';
+import { sliceOf, solversFor } from '/shared/api.js';
 import { describeError, el, health, mountChrome, revealPanel } from '/shared/components.js';
 import { drawCurve } from '/shared/curve.js';
 import {
@@ -61,7 +72,15 @@ import * as runs from '/shared/runs.js';
 import { createWorkspace } from '/shared/workspace.js';
 
 const EXERCISE = 'heatsink';
-const GEOMETRY_TYPE = 'regions2d';
+/**
+ * Both kinds, because the page offers both solvers.
+ *
+ * The catalogue is filtered by geometry kind *and* by physics — see `solversFor` on why the
+ * second filter exists — so a page that produces two kinds asks twice and merges. What it must
+ * not do is ask for neither and filter by name: the reason `physics` is a declaration is that a
+ * list of names kept here goes stale the first time one is added.
+ */
+const GEOMETRY_TYPES = ['regions2d', 'regions3d'];
 /**
  * `heatsink`, and deliberately not `heat`.
  *
@@ -99,6 +118,12 @@ const dom = Object.fromEntries(
     'compareJump',
     'solver',
     'solverHint',
+    'solidControls',
+    'solidNote',
+    'planePanel',
+    'planeAxis',
+    'planePosition',
+    'planeNote',
     'numerical',
     'conditions',
     'derivedToggle',
@@ -163,6 +188,14 @@ const SHAPE_DEFAULTS = {
   ambient: 25,
   footprint: 30,
   velocity: 0,
+  // The extrusion length, in millimetres. It has always been part of this exercise — every
+  // watt, gram and kelvin per watt on the page is per unit depth multiplied by it — and it
+  // used to be a solver default nobody could see. Where it *travels* now depends on what is
+  // being solved: a parameter for the section, the geometry's own z extent for the solid.
+  depth: 60,
+  // How much of that length the device actually touches. Meaningless to the section solver,
+  // which has nowhere to put it, and the whole of what the solid one adds.
+  footprintDepth: 30,
 };
 
 const shape = { ...SHAPE_DEFAULTS };
@@ -235,6 +268,28 @@ const CONDITION_CONTROLS = [
     step: 1,
     unit: ' mm',
     title: t('heatsink.design.footprintTitle'),
+  },
+  {
+    key: 'depth',
+    label: t('heatsink.design.depth'),
+    min: 20,
+    max: 200,
+    step: 5,
+    unit: ' mm',
+    title: t('heatsink.design.depthTitle'),
+  },
+];
+
+/** The one control only the solid solver can use, so the page offers it only then. */
+const SOLID_CONTROLS = [
+  {
+    key: 'footprintDepth',
+    label: t('heatsink.design.footprintDepth'),
+    min: 5,
+    max: 200,
+    step: 5,
+    unit: ' mm',
+    title: t('heatsink.design.footprintDepthTitle'),
   },
 ];
 
@@ -349,40 +404,71 @@ function renderVelocity() {
 /* ------------------------------------------------------------------ the payloads */
 
 /**
- * The envelope, as `regions2d`.
+ * The envelope, in whichever kind the chosen solver takes.
  *
  * One region, and it is the space the sink may occupy rather than the sink itself — the same
- * "site" role the bridge's geometry plays. The vertices are inset by a micron because
- * `polygon2d` requires them strictly inside the bounds.
+ * "site" role the bridge's geometry plays. The vertices are inset by a micron because a region
+ * must lie strictly inside the domain bounds.
+ *
+ * **The difference between the two is one coordinate, and it is the point of the whole
+ * change.** A `regions2d` has no length, so the extrusion travelled as `params.depth` and every
+ * number came back per unit depth multiplied by it — which a server can neither check nor
+ * refuse. A `regions3d` has a `z` extent, so the same quantity is now part of the payload the
+ * solver validates. Nothing else about the envelope moved.
  */
 function buildGeometry() {
   const eps = 1e-6;
   const [w, h] = [ENVELOPE_WIDTH, ENVELOPE_HEIGHT];
+  if (!isSolid()) {
+    return {
+      type: 'regions2d',
+      bounds: [0, 0, w, h],
+      background: {},
+      regions: [
+        {
+          name: 'envelope',
+          shape: {
+            type: 'polygon2d',
+            points: [
+              [eps, eps],
+              [w - eps, eps],
+              [w - eps, h - eps],
+              [eps, h - eps],
+            ],
+          },
+          material: {},
+        },
+      ],
+    };
+  }
+
+  const d = shape.depth / 1000;
   return {
-    type: 'regions2d',
-    bounds: [0, 0, w, h],
+    type: 'regions3d',
+    bounds: [0, 0, 0, w, h, d],
     background: {},
     regions: [
       {
         name: 'envelope',
-        shape: {
-          type: 'polygon2d',
-          points: [
-            [eps, eps],
-            [w - eps, eps],
-            [w - eps, h - eps],
-            [eps, h - eps],
-          ],
-        },
+        // `box3d` and not a polygon: a solid region is a parametric primitive, which is what
+        // keeps a face of it nameable by construction rather than by vertex index.
+        shape: { type: 'box3d', min: [eps, eps, eps], max: [w - eps, h - eps, d - eps] },
         material: {},
       },
     ],
   };
 }
 
-/** Millimetres on the page, metres on the wire. Converted in exactly one place. */
+/**
+ * Millimetres on the page, metres on the wire. Converted in exactly one place.
+ *
+ * The last two entries are where the two solvers part company, and neither is optional: the
+ * section takes `depth` because it has nowhere else to learn the length, and the solid refuses
+ * it — it read the length off the geometry — while taking the one thing that only exists once
+ * there is a length to be shorter than.
+ */
 function profileParams() {
-  return {
+  const common = {
     base_thickness: shape.baseThickness / 1000,
     fin_count: Math.round(shape.finCount),
     fin_thickness: shape.finThickness / 1000,
@@ -395,6 +481,9 @@ function profileParams() {
     face_velocity: choices.cooling === 'forced' ? shape.velocity : 0,
     base_mounted_flush: choices.flush,
   };
+  return isSolid()
+    ? { ...common, footprint_depth: shape.footprintDepth / 1000 }
+    : { ...common, depth: shape.depth / 1000 };
 }
 
 function currentParams(extra = {}) {
@@ -475,7 +564,47 @@ function applyShape() {
       })
     : t('heatsink.shapeOverlap', { count: n });
   dom.run.disabled = !finsFit() || !solver() || running;
+  dom.sweep.disabled = isSolid();
+  renderModelNote();
   renderDerived();
+}
+
+/**
+ * The controls and the sentence that depend on which question is being asked.
+ *
+ * Rebuilt on every model change rather than hidden, because the solid's one extra control has
+ * no meaning at all for the section — a disabled slider would suggest the section could take
+ * the number and is declining to, which is the opposite of the situation.
+ */
+function renderModel() {
+  const solidChosen = isSolid();
+  if (solidChosen) buildShapeControls(dom.solidControls, SOLID_CONTROLS, shape, applyShape);
+  else dom.solidControls.replaceChildren();
+
+  dom.solverHint.textContent = solver()?.description ?? '';
+  if (!solidChosen) {
+    solid = null;
+    dom.planePanel.hidden = true;
+  }
+  renderModelNote();
+}
+
+/**
+ * The sentence under the model choice — text only, and separate from the controls above it.
+ *
+ * Split because `applyShape` runs on every pixel of a drag: rebuilding the slider from under
+ * the pointer mid-gesture drops the drag, which is a bug that only appears with a mouse held
+ * down and is therefore easy to ship.
+ */
+function renderModelNote() {
+  dom.solidNote.hidden = false;
+  dom.solidNote.textContent = isSolid()
+    ? t('heatsink.model.solidNote', {
+        covered: num(Math.min(100, (100 * shape.footprintDepth) / shape.depth), {
+          maximumFractionDigits: 0,
+        }),
+      })
+    : t('heatsink.model.sectionNote');
 }
 
 function setRect(node, x, y, width, height) {
@@ -498,7 +627,7 @@ function estimatedMass() {
   const area =
     (60 * shape.baseThickness + Math.round(shape.finCount) * shape.finThickness * shape.finHeight) /
     1e6;
-  return 2700 * area * 0.06;
+  return 2700 * area * (shape.depth / 1000);
 }
 
 function renderDerived() {
@@ -569,6 +698,41 @@ const METRICS = [
   { key: 'view_factor_to_room', label: t('heatsink.metrics.viewFactor'), unit: '1', digits: 3 },
   { key: 'h_convective', label: t('heatsink.metrics.h'), unit: 'W/m²·K', digits: 2 },
   { key: 'flux_max', label: t('heatsink.metrics.flux'), unit: 'W/m²', digits: 0 },
+  // The four the section has no way to produce. `requires` is what makes them read as "this
+  // run could not answer that" rather than as a missing number — the same mechanism the
+  // aerofoil uses for a quantity that only a sweep has.
+  {
+    key: 'thermal_resistance_extruded',
+    label: t('heatsink.metrics.extruded'),
+    unit: 'K/W',
+    digits: 4,
+    requires: 'solid',
+    absent: t('heatsink.metrics.needsSolid'),
+  },
+  {
+    key: 'spreading_resistance',
+    label: t('heatsink.metrics.spreading'),
+    unit: 'K/W',
+    digits: 4,
+    requires: 'solid',
+    absent: t('heatsink.metrics.needsSolid'),
+  },
+  {
+    key: 'end_gain',
+    label: t('heatsink.metrics.endGain'),
+    unit: 'K/W',
+    digits: 4,
+    requires: 'solid',
+    absent: t('heatsink.metrics.needsSolid'),
+  },
+  {
+    key: 'end_loss_fraction',
+    label: t('heatsink.metrics.endLoss'),
+    unit: '1',
+    digits: 3,
+    requires: 'solid',
+    absent: t('heatsink.metrics.needsSolid'),
+  },
 ];
 
 const METRIC_LABELS = Object.fromEntries(METRICS.map((metric) => [metric.key, metric]));
@@ -647,6 +811,9 @@ const FIELD_VIEW = {
 
 const forms = { numerical: {} };
 let catalogue = { all: [], byMode: {} };
+let chosenSolver = null;
+/** The last solid result and the plane currently cut through it. Null for a section. */
+let solid = null;
 let report = null;
 let running = false;
 let currentJob = null;
@@ -656,8 +823,41 @@ let lastSweep = null;
 let selected = new Set();
 let guide = null;
 
+/**
+ * The capability the page will submit to.
+ *
+ * It used to be "the first one whose name starts with `lab.heatsink`", which was right while
+ * there was one. There are two now and they answer different questions, so the choice is the
+ * visitor's and this reads it back. The fallback is deliberate and is the section: it is the
+ * faster solve and the one the fin-count sweep needs, so a server that offers only one still
+ * gets a working page.
+ */
 function solver() {
-  return catalogue.all.find((entry) => entry.name.startsWith(SOLVER_PREFIX)) ?? null;
+  const heatsinks = catalogue.all.filter((entry) => entry.name.startsWith(SOLVER_PREFIX));
+  return heatsinks.find((entry) => entry.name === chosenSolver) ?? heatsinks[0] ?? null;
+}
+
+/** Is the chosen capability the one that solves a body? Read from what it *declares*. */
+function isSolid() {
+  return Boolean(solver()?.geometry_types?.includes('regions3d'));
+}
+
+/** The two capabilities, section first — which is the order the exercise is built in. */
+function heatsinkSolvers() {
+  return catalogue.all
+    .filter((entry) => entry.name.startsWith(SOLVER_PREFIX))
+    .sort(
+      (a, b) =>
+        Number(a.geometry_types.includes('regions3d')) -
+        Number(b.geometry_types.includes('regions3d')),
+    );
+}
+
+/** What to call each of them on the page. The server's own titles are English-only. */
+function modelLabel(entry) {
+  return entry.geometry_types.includes('regions3d')
+    ? t('heatsink.model.solid')
+    : t('heatsink.model.section');
 }
 
 /**
@@ -687,6 +887,11 @@ function buildReport(result) {
     validity: { warnings: diagnostics.warnings ?? [] },
     stats: result.stats ?? {},
     converged: diagnostics.converged ?? null,
+    // Which of the two questions this run answered. Read from the *result*, not from the
+    // control: a row kept before the visitor switched solvers must keep saying what produced
+    // it, and the metric panel must not claim a section run was missing a number it was never
+    // able to have.
+    solid: result.kind === 'mesh3d',
   };
 }
 
@@ -702,6 +907,7 @@ async function run() {
   dom.artifacts.replaceChildren();
 
   try {
+    let jobId = null;
     const result = await runSolve({
       dom,
       solver: chosen.name,
@@ -709,6 +915,7 @@ async function run() {
       params: currentParams(),
       onJob: (job) => {
         currentJob = job;
+        jobId = job.id;
       },
     });
     if (!result) return;
@@ -716,7 +923,16 @@ async function run() {
     const first = report === null;
     report = buildReport(result);
     dom.results.hidden = false;
-    workspace.setResult(result);
+    // A `mesh3d` is not something the canvas draws, and deliberately: a solid is seen by
+    // cutting it. `showSolid` asks the server for a plane and hands the viewer the `grid2d`
+    // that comes back, so the picture below is a real query against the real result rather
+    // than a rendering of a mesh nobody downloaded to look at.
+    if (result.kind === 'mesh3d') await showSolid(result, jobId);
+    else {
+      solid = null;
+      dom.planePanel.hidden = true;
+      workspace.setResult(result);
+    }
     if (first) workspace.fit();
     syncFieldOptions(dom.viewer, dom.field, FIELD_VIEW, dom.fieldHint);
     showStats(dom.stats, result);
@@ -743,6 +959,10 @@ async function runSweep() {
   if (running) return;
   const chosen = solver();
   if (!chosen) return;
+  // The sweep is twenty solves and the solid one is seconds each, so it is a parameter the
+  // section adapter has and the solid one deliberately does not. The button is disabled rather
+  // than hidden: a control that vanishes teaches nothing about why.
+  if (isSolid()) return;
 
   const counts = [];
   for (let n = 2; n <= 26; n += 2) {
@@ -773,6 +993,105 @@ async function runSweep() {
     dom.run.disabled = !finsFit();
   }
 }
+
+/* --------------------------------------------------------------------- the cut plane */
+
+/**
+ * Which plane is currently cut through the solid, in metres along its normal.
+ *
+ * `z` by default, at mid-length — which is the cross-section, and therefore the picture the
+ * section solver draws. Starting there is what makes the *other* two worth looking at: the
+ * visitor recognises the first one, and then sees that a cut through the base is not uniform.
+ */
+const plane = { axis: 'z', value: null };
+
+const PLANE_AXES = ['z', 'y', 'x'];
+
+/** Where each axis may be cut, from the mesh's own bounds. */
+function planeRange(axis) {
+  const [xmin, ymin, zmin, xmax, ymax, zmax] = solid?.bounds ?? [0, 0, 0, 1, 1, 1];
+  if (axis === 'x') return [xmin, xmax];
+  if (axis === 'y') return [ymin, ymax];
+  return [zmin, zmax];
+}
+
+/** A sensible first cut per axis: mid-length, mid-base, mid-width. */
+function planeDefault(axis) {
+  const [low, high] = planeRange(axis);
+  if (axis === 'y') return Math.min(high, shape.baseThickness / 2000);
+  return 0.5 * (low + high);
+}
+
+async function showSolid(result, jobId) {
+  solid = { jobId, bounds: result.data.bounds, result };
+  dom.planePanel.hidden = false;
+  plane.value = planeDefault(plane.axis);
+  renderPlaneControls();
+  await drawPlane();
+}
+
+/** Fetch the plane and give it to the viewer. Failure says so rather than blanking the stage. */
+async function drawPlane() {
+  if (!solid) return;
+  try {
+    const cut = await sliceOf(solid.jobId, {
+      fields: Object.keys(FIELD_VIEW),
+      axis: plane.axis,
+      value: plane.value,
+    });
+    workspace.setResult({ ...solid.result, kind: cut.kind, data: cut.data });
+    syncFieldOptions(dom.viewer, dom.field, FIELD_VIEW, dom.fieldHint);
+    workspace.draw();
+    dom.planeNote.textContent = t(`heatsink.planeNote.${plane.axis}`, {
+      position: num(plane.value * 1000, { maximumFractionDigits: 1 }),
+      missed: cut.missed,
+    });
+  } catch (error) {
+    dom.planeNote.textContent = describeError(error);
+  }
+}
+
+function renderPlaneControls() {
+  dom.planeAxis.replaceChildren(
+    ...PLANE_AXES.map(
+      (axis) => new Option(t(`heatsink.plane.${axis}`), axis, false, axis === plane.axis),
+    ),
+  );
+  const [low, high] = planeRange(plane.axis);
+  buildShapeControls(
+    dom.planePosition,
+    [
+      {
+        key: 'position',
+        label: t('heatsink.planePosition'),
+        min: Number((low * 1000).toFixed(1)),
+        max: Number((high * 1000).toFixed(1)),
+        step: 0.5,
+        unit: ' mm',
+        title: t('heatsink.planePositionTitle'),
+      },
+    ],
+    // A view of `plane.value` in millimetres, so the slider and the wire never disagree about
+    // units: the control writes here and this is the only place the conversion happens.
+    {
+      get position() {
+        return plane.value * 1000;
+      },
+      set position(mm) {
+        plane.value = mm / 1000;
+      },
+    },
+    // Debounced, because the control fires on every pixel of travel and each fire is a POST.
+    // A hundred and fifty milliseconds is below the threshold where a drag feels laggy and
+    // above the rate a dragged slider emits, so the server sees one cut per gesture.
+    () => {
+      window.clearTimeout(planeTimer);
+      planeTimer = window.setTimeout(drawPlane, 150);
+    },
+  );
+}
+
+let planeTimer = 0;
 
 function present() {
   renderChallenge(dom.challenge, content?.challenge, report, METRIC_LABELS);
@@ -843,6 +1162,9 @@ const COLUMNS = [
   { path: 'metrics.mass', label: t('heatsink.columns.mass') },
   { path: 'metrics.score', label: 'R_θ·m' },
   { path: 'metrics.radiative_fraction', label: t('heatsink.columns.radiative') },
+  // Blank on a section run, which is the honest entry: it is the number that run could not
+  // produce, not a zero.
+  { path: 'metrics.depth_correction', label: t('heatsink.columns.depthCorrection') },
   { path: 'physical.emissivity', label: 'ε' },
   { path: 'verification.energy_balance_rel', label: t('heatsink.columns.energy') },
 ];
@@ -872,7 +1194,11 @@ function row() {
       fin_thickness_m: mm(shape.finThickness),
       fin_height_m: mm(shape.finHeight),
       channel_width_m: mm(channelWidth()),
-      depth_m: 0.06,
+      depth_m: mm(shape.depth),
+      // Only meaningful for a solid run, and null rather than absent when it is not: a column
+      // that is sometimes missing and sometimes zero cannot be compared down a table.
+      footprint_depth_m: isSolid() ? mm(shape.footprintDepth) : null,
+      kind: isSolid() ? 'regions3d' : 'regions2d',
     },
     physical: {
       power_w: shape.power,
@@ -929,7 +1255,27 @@ function refreshRuns(rows = runs.load(EXERCISE), evicted = 0) {
 function buildForms() {
   const chosen = solver();
   if (!chosen) return;
+  // Rebuilt from the chosen capability's own schema, which is why switching model swaps the
+  // Advanced panel too: the section takes one `cell_size`, the solid takes three lengths and
+  // a decomposition switch, and neither list is written down here.
   forms.numerical = buildParamForm(dom.numerical, chosen, PARAM_UI, forms.numerical);
+}
+
+/**
+ * Populate the model menu, and say what a server that offers only one can do.
+ *
+ * A single-capability server is the normal case for anyone running the slim image, and the
+ * page has to stay usable there rather than presenting a menu of one.
+ */
+function renderSolverChoice() {
+  const available = heatsinkSolvers();
+  dom.solver.replaceChildren(
+    ...available.map(
+      (entry) => new Option(modelLabel(entry), entry.name, false, entry.name === chosenSolver),
+    ),
+  );
+  dom.solver.disabled = available.length < 2;
+  renderModel();
 }
 
 /* ------------------------------------------------------------------------ wiring */
@@ -952,6 +1298,21 @@ buildShapeControls(dom.conditions, CONDITION_CONTROLS, shape, applyShape);
 buildChoiceControls(dom.conditions);
 applyShape();
 
+dom.solver.addEventListener('change', () => {
+  chosenSolver = dom.solver.value;
+  // The numerical form belongs to the capability, so it is rebuilt rather than carried over:
+  // `depth_cell_size` means nothing to the section solver and would be refused by it.
+  forms.numerical = {};
+  renderModel();
+  buildForms();
+  applyShape();
+});
+dom.planeAxis.addEventListener('change', () => {
+  plane.axis = dom.planeAxis.value;
+  plane.value = planeDefault(plane.axis);
+  renderPlaneControls();
+  drawPlane();
+});
 dom.run.addEventListener('click', run);
 dom.sweep.addEventListener('click', runSweep);
 dom.cancel.addEventListener('click', () => currentJob?.cancel?.());
@@ -1085,11 +1446,18 @@ try {
   const [loaded, info, solvers] = await Promise.all([
     fetch(contentUrl(EXERCISE)).then((response) => response.json()),
     health().catch(() => null),
-    solversFor(GEOMETRY_TYPE, { physics: PHYSICS }),
+    Promise.all(GEOMETRY_TYPES.map((kind) => solversFor(kind, { physics: PHYSICS }))),
   ]);
 
   content = loaded;
-  catalogue = solvers;
+  // Two catalogues, one menu. A capability answering both kinds would appear twice, so the
+  // merge is by name rather than a concatenation — none does today, and a page that would
+  // break when one did is a page waiting to break.
+  catalogue = {
+    all: [...new Map(solvers.flatMap((c) => c.all).map((entry) => [entry.name, entry])).values()],
+    byMode: Object.assign({}, ...solvers.map((c) => c.byMode)),
+    declares: solvers.some((c) => c.declares),
+  };
   mountLoop();
   renderLesson({ content, intro: null, lesson: dom.lesson, open: ['problem'] });
   mountGuide();
@@ -1098,8 +1466,8 @@ try {
 
   const chosen = solver();
   if (chosen) {
-    dom.solver.replaceChildren(new Option(chosen.title, chosen.name));
-    dom.solverHint.textContent = chosen.description;
+    chosenSolver = chosen.name;
+    renderSolverChoice();
     buildForms();
     workspace.draw();
   }

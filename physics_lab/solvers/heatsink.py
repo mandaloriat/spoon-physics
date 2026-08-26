@@ -55,8 +55,10 @@ KELVIN = 273.15
 
 #: Below this excess temperature a face is treated as isothermal with the ambient when forming
 #: an equivalent coefficient, to keep ``q / (T - T_inf)`` from dividing by zero on the first
-#: pass. The flux itself is still exact; only the linearisation is guarded.
-_MIN_EXCESS_K = 1e-3
+#: pass. The flux itself is still exact; only the linearisation is guarded. Public, because
+#: :mod:`physics_lab.solvers.heatsink_solid` forms the same coefficient and a second copy of
+#: this number is a second place for it to be different.
+MIN_EXCESS_K = 1e-3
 
 
 @dataclass(frozen=True)
@@ -212,12 +214,16 @@ class Solution:
 # ────────────────────────────────────────────────────────────────────────── the grid
 
 
-def _edges(must_have: list[float], target: float) -> np.ndarray:
+def grid_lines(must_have: list[float], target: float) -> np.ndarray:
     """Grid lines through every value in ``must_have``, subdivided to about ``target``.
 
     Landing a line on every fin edge is what keeps the metal/air interface exact instead of a
     staircase whose steps move with the resolution — the failure ADR-018 recorded upstream and
     the reason the magnetics solver builds its grid the same way.
+
+    Public, because the third dimension needs the same treatment for a different boundary: the
+    two edges of the device footprint along the length. See
+    :func:`physics_lab.solvers.heatsink_solid.build_z_edges`.
     """
     anchors = sorted(set(round(v, 12) for v in must_have))
     lines: list[float] = []
@@ -234,7 +240,7 @@ def build_grid(profile: Profile, cell_size: float) -> tuple[np.ndarray, np.ndarr
     for left, right in profile.fin_spans:
         x_anchors.extend((left, right))
     y_anchors = [0.0, profile.base_thickness, profile.total_height]
-    return _edges(x_anchors, cell_size), _edges(y_anchors, cell_size)
+    return grid_lines(x_anchors, cell_size), grid_lines(y_anchors, cell_size)
 
 
 def solid_mask(
@@ -339,7 +345,7 @@ def exposed_faces(
 # ─────────────────────────────────────────────────────────────────────── radiation
 
 
-def _mouth_surfaces(
+def mouth_surfaces(
     profile: Profile, x_edges: np.ndarray, left: float, right: float
 ) -> list[Surface]:
     """The fictitious black window that closes a channel enclosure (§2.2).
@@ -386,6 +392,35 @@ class Enclosure:
             (1.0 - self.emissivity)[:, None] * self.matrix
         )
         radiosity = np.linalg.solve(system, self.emissivity * emissive_power)
+        return (radiosity - self.matrix @ radiosity)[: self.n_real]
+
+    def net_flux_columns(
+        self, wall_temperature_k: np.ndarray, ambient_k: float
+    ) -> np.ndarray:
+        """:meth:`net_flux` for many stations at once — ``(n_real, m)`` in, the same shape out.
+
+        The third dimension solves this enclosure once per station along the extrusion, and the
+        matrix it solves is the *same* matrix every time: ``I - (1 - eps) F`` depends on the
+        geometry and the finish, neither of which varies along a prismatic channel. Only the
+        emissive power changes. So the stations travel as columns of one right-hand side, which
+        turns a thousand small factorisations into one — and, more importantly, they are
+        factorisations of a matrix that is by construction identical, so no station can be
+        solved to a different accuracy than its neighbour.
+
+        Used by :mod:`physics_lab.solvers.heatsink_solid`; the one-station
+        :meth:`net_flux` is this with a single column, and is kept because reading it is how
+        anyone understands what this does.
+        """
+        columns = wall_temperature_k.shape[1]
+        mouths = len(self.surfaces) - self.n_real
+        temperatures = np.concatenate(
+            [wall_temperature_k, np.full((mouths, columns), ambient_k)]
+        )
+        emissive_power = SIGMA * temperatures**4
+        system = np.eye(len(self.surfaces)) - (
+            (1.0 - self.emissivity)[:, None] * self.matrix
+        )
+        radiosity = np.linalg.solve(system, self.emissivity[:, None] * emissive_power)
         return (radiosity - self.matrix @ radiosity)[: self.n_real]
 
     def view_to_room(self) -> np.ndarray:
@@ -485,7 +520,7 @@ def solve(
             if members:
                 enclosures[index] = Enclosure(
                     members,
-                    _mouth_surfaces(profile, x_edges, left, right),
+                    mouth_surfaces(profile, x_edges, left, right),
                     conditions.emissivity,
                 )
 
@@ -531,12 +566,12 @@ def solve(
                 )
                 flux = enclosure.net_flux(walls, ambient_k)
                 for face, q, t_wall in zip(enclosure.faces, flux, walls, strict=True):
-                    radiative_h[id(face)] = q / max(t_wall - ambient_k, _MIN_EXCESS_K)
+                    radiative_h[id(face)] = q / max(t_wall - ambient_k, MIN_EXCESS_K)
             for face in convective:
                 if face.kind == "open":
                     t_wall = temperature_k[face.row, face.col]
                     q = conditions.emissivity * SIGMA * (t_wall**4 - ambient_k**4)
-                    radiative_h[id(face)] = q / max(t_wall - ambient_k, _MIN_EXCESS_K)
+                    radiative_h[id(face)] = q / max(t_wall - ambient_k, MIN_EXCESS_K)
 
         diag = np.zeros_like(mask, dtype=float)
         rhs = np.zeros_like(mask, dtype=float)
@@ -654,7 +689,7 @@ def _assemble(
             fin_heat += convective + radiated
             fin_area += face.area
             fin_root_excess.append(
-                float(temperature_k[_root_row(y_edges, profile), face.col]) - ambient_k
+                float(temperature_k[root_row(y_edges, profile), face.col]) - ambient_k
             )
 
     total_out = convective_out + radiative_out
@@ -667,7 +702,7 @@ def _assemble(
     root_excess = float(np.mean(fin_root_excess)) if fin_root_excess else 0.0
     total_h = coefficient.value + (
         (radiative_out / max(sum(f.area for f in faces if f.kind in ("channel", "open")), 1e-30))
-        / max(rise, _MIN_EXCESS_K)
+        / max(rise, MIN_EXCESS_K)
         if conditions.radiation
         else 0.0
     )
@@ -718,7 +753,7 @@ def _assemble(
     )
 
 
-def _root_row(y_edges: np.ndarray, profile: Profile) -> int:
+def root_row(y_edges: np.ndarray, profile: Profile) -> int:
     """The cell row just below the fin roots, where a fin's base temperature is read."""
     yc = 0.5 * (y_edges[:-1] + y_edges[1:])
     below = np.nonzero(yc < profile.base_thickness)[0]

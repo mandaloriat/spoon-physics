@@ -24,26 +24,27 @@ export default {
   },
 
   brand: {
+    // The tagline ADR-016 fixed and ADR-022 replaced is gone altogether: the redesign's
+    // header carries the wordmark alone, and the homepage hero is the claim now. ADR-025.
     name: 'Spoon Physics',
-    // ADR-016 fixed the old tagline as the product's non-negotiable claim. The editorial
-    // review replaces it deliberately: that one described the solver, this one describes what
-    // you do with it. See ADR-022.
-    tagline: 'Physics challenges. Real computation. Results worth arguing about.',
   },
 
   nav: {
     label: 'Lab sections',
-    experiments: 'Challenges',
-    how: 'How to play',
     code: 'Code',
+    details: 'Model details',
   },
 
   footer: {
+    advanced: 'Advanced lab',
     builtWith: 'Built with ',
     and: ' and ',
-    notAffiliated: '. Not affiliated with the FEniCS Project.',
-    source: 'Source on GitHub',
+    notAffiliated: 'Not affiliated with the FEniCS Project.',
+    source: 'Source',
     licence: ' · MIT',
+    // One sentence in place of the boxed disclaimer every page used to carry. The wording
+    // keeps the phrase the CI documentation check reads.
+    caveat: 'Models for exploring ideas, not professional engineering tools.',
   },
 
   stats: {
@@ -82,6 +83,8 @@ export default {
   /* ---------------------------------------------------------------- the shared page shell */
 
   experiment: {
+    sliceFailed: 'The server could not cut that plane (HTTP {status}).',
+    sliceMismatch: 'Two cuts of the same plane came back on different grids, so neither is drawn.',
     pageTitle: '{title} — Spoon Physics',
     notSet: 'not set',
     submitting: 'Submitting…',
@@ -148,6 +151,10 @@ export default {
       unchecked: 'not checked',
       caution: 'with care',
       no: 'no',
+      /* The rail lights' good states. The failing states reuse the words above, so the two
+         renderings of the same indicator can never disagree. */
+      settled: 'settled',
+      inRange: 'in range',
       numericWhat:
         'Whether the answer barely moves when the computation is refined, or checked a second way.',
       physicalWhat:
@@ -164,6 +171,10 @@ export default {
       above: '{delta} over the limit.',
       below: '{delta} below the minimum.',
       barAria: '{value} against a limit of {limit}',
+      /* The goal as the label row states it: "of 800 N/m", "under 0.080". */
+      goalOf: 'of {value} {unit}',
+      goalUnder: 'under {value} {unit}',
+      goalAtLeast: 'at least {value} {unit}',
     },
   },
 
@@ -179,6 +190,7 @@ export default {
   prediction: {
     heading: 'Before you compute',
     unknown: 'Not sure yet',
+    dismiss: 'Not now',
     note: 'Your prediction changes nothing in the computation. It is there so you have something to compare the result against.',
     youSaid: 'You predicted:',
   },
@@ -243,13 +255,8 @@ export default {
       why: 'Probing needs a computed field. Run the solve first.',
     },
     edit: { label: 'Edit shape', title: 'Show and drag the geometry’s control points' },
-    zoomOut: { label: 'Zoom out', why: 'Already fitted.' },
-    zoomIn: {
-      label: 'Zoom in',
-      why: 'At the limit: past this the picture is the sampling grid, magnified.',
-    },
-    fit: { label: 'Fit body', why: 'Nothing to frame until the geometry is known.' },
-    reset: { label: 'Reset view' },
+    /* Zoom in, out and reset folded into Fit plus the wheel and keyboard — ADR-025. */
+    fit: { label: 'Fit', why: 'Nothing to frame until the geometry is known.' },
     vectors: {
       label: 'Vectors',
       title: 'Arrow glyphs of the velocity field',
@@ -281,73 +288,52 @@ export default {
   home: {
     title: 'Spoon Physics — interactive physics challenges',
     description:
-      'Small interactive physics challenges: make a prediction, change the design, compute the result, and compare your attempts against the limits of the model.',
-    heroHeading: 'Make a prediction. Put it to the test.',
-    lede: 'Pick a challenge, change a few parameters, and see what the model predicts. Keep your attempts, compare them, and find where the simulation stops being believable.',
+      'Three physics challenges, solved on a real finite-element server while you watch. Guess first, then compute it, and compare your attempts against the limits of the model.',
+    /* Everything in the hero readout is true of the thumbnail beside it — the field, the
+       incidence and the speed scripts/make-thumbnails.py solved it at. No fake timers. */
+    eyebrow: 'Real solve · panel method',
+    heroLine1: 'Guess first.',
+    heroLine2: 'Then compute it.',
+    lede: 'Three physics challenges, solved on a real finite-element server while you watch.',
+    openWing: 'Open the wing →',
+    howItWorks: 'How it works',
+    target: 'Target 800 N/m',
     experiments: 'Challenges',
-    badgeExercise: 'Challenge',
-    badgePlanned: 'In preparation',
-    missionSummary: 'The challenge',
+    howHeading: 'How to play',
+
+    /* The loop strip: predict, compute, compare — and the one sentence worth keeping whole. */
+    loop1: 'Predict',
+    loop2: 'Compute',
+    loop3: 'Compare',
+    loopNote: 'A number can be computed well and still describe reality badly.',
 
     airfoil: {
-      name: 'Find the wing’s attitude',
+      domain: '01 / Aerodynamics',
+      time: '5–8 min',
       question: 'How much tilt does a wing need?',
-      topic: 'Aerodynamics · 5–8 min',
-      problem:
-        'Pick a section and set the angle until the wing carries the lift it has to, without twisting too hard. Different sections can get there in different ways.',
-      mission: 'Hold up the equivalent of about 80 kg for every metre of wing.',
-      cta: 'Try a wing →',
+      mission: 'Hold up about 80 kg for every metre of wing.',
     },
     truss: {
-      name: 'Build a bridge that holds',
+      domain: '02 / Structures',
+      time: '8–12 min',
       question: 'Which bar gives way first?',
-      topic: 'Structures · 8–12 min',
-      problem:
-        'Draw a 24-metre bridge, carry the traffic and stay inside the steel budget. Before you compute, say which bar you think is the weakest.',
-      mission: 'About 10 tonnes spread along the deck, on 2.4 tonnes of steel at most.',
-      cta: 'Build the bridge →',
+      mission: '10 tonnes on the deck, 2.4 tonnes of steel at most.',
     },
     heatsink: {
-      name: 'How many fins do you actually need?',
+      domain: '03 / Heat',
+      time: '6–10 min',
       question: 'Do more fins always cool better?',
-      topic: 'Heat · 6–10 min',
-      problem:
-        'Predict how many fins it takes, then let the computation explore the alternatives. Too few shed little heat; too many can choke the air trying to get past.',
-      mission: 'Keep a 30 W device under 95 °C on no more than 170 g of aluminium.',
-      cta: 'Design the heat sink →',
+      mission: '30 W under 95 °C, on 170 g of aluminium.',
     },
+    /* The advanced lab: a footer link now, not a shelf. The name is also the link's text. */
     solenoid: {
       name: 'Magnetic field in a 2D section',
-      question: 'Magnetic field in a 2D section',
-      topic: 'Magnetostatics',
-      problem:
-        'Carry a required flux through an iron core on an ampere-turn budget, and watch how much of it leaks into the air.',
-      mission: 'Written for readers who already know flux, field and magnetic circuits.',
-      cta: 'Open the lab →',
     },
-
-    howHeading: 'How to play',
-    step1Heading: '1. Predict',
-    step1:
-      'Say what you think will happen. Guessing right is not the point: the prediction is there to give you something to compare against.',
-    step2Heading: '2. Compute',
-    step2:
-      'Change a few parameters and run it. The field and the numbers come out of the configuration you chose.',
-    step3Heading: '3. Compare',
-    step3:
-      'Keep at least two attempts. Look for what changed, which constraint decided the result, and where the model stops being enough.',
-    howNote:
-      '<strong>A number can be computed well and still describe reality badly.</strong> That is why every attempt keeps the stability of the computation separate from the limits of the model.',
-
-    advancedHeading: 'Advanced labs',
-    advancedLead:
-      'Pages built for readers who already know the subject. They are not challenges with a target to hit.',
 
     disclaimerLabel: 'Note.',
     disclaimer:
       'These models are for exploring ideas and comparing designs. They are not professional engineering tools.',
 
-    aboutHeading: 'How to play',
     methodSummary: 'Method, code and data',
     methodBody:
       'The answers are not canned animations: they are computed from the configuration in front of you. Each challenge uses the model that suits it, and offers numerical controls, the full set of quantities and a data export. The lab’s code is open source.',
@@ -399,7 +385,10 @@ export default {
     fieldShown: 'Field shown',
     configure: 'Change the design',
     design: 'Your choices',
+    reading: 'Reading',
+    more: 'Shape, air and numerics',
     conditions: 'Conditions of the test',
+    numericsHeading: 'Numerics',
     whatFollows: 'Derived values',
     advanced: 'More controls',
     advancedError:
@@ -418,9 +407,13 @@ export default {
     keptRuns: 'Your attempts',
     exportCsv: 'Export CSV',
     exportJson: 'Export JSON',
+    exportData: 'Export CSV / JSON',
     deleteAll: 'Delete all',
+    compareChip: '+ compare',
     why: 'Why it happens',
     lesson: 'Model details',
+    modelLimits: 'The model & its limits',
+    checksRun: 'Checks on this run',
     lessonLead:
       'Formulae, boundary conditions, checks and export. None of it is needed to play: it is here for when you want to know how the answer was computed.',
     maintenance:
@@ -435,15 +428,9 @@ export default {
     /* The three headline results (§7.5) and the nudges after a failed attempt (§7.7). */
     headline: {
       lift: 'Lift',
-      perMetre: 'N per metre',
       liftHint: 'Lift per metre of span, from the pressure integrated over the whole surface.',
-      twist: 'Tendency to twist',
+      twist: 'Twist',
       twistHint: 'Pitching moment about the quarter chord, against the limit this challenge sets.',
-      noseDown: 'Twisting nose-down.',
-      noseUp: 'Twisting nose-up.',
-      suction: 'Sharpest suction',
-      suctionNote: 'Not a target. It says how concentrated the pressure changes are.',
-      suctionHint: 'The lowest pressure coefficient anywhere on the surface.',
     },
     hint: {
       lowLift: 'Lift is low. Change the angle first, and leave the profile where it is.',
@@ -477,10 +464,15 @@ export default {
     title: 'Find the wing’s attitude — Spoon Physics',
     description:
       'A physics challenge: pick a wing section, set the angle, and carry the lift it has to without twisting too hard. Predict first, then compute and compare your attempts.',
-    eyebrow: 'Section, angle and pressure distribution',
-    heading: 'Find the wing’s attitude',
+    /* The mission strip: the whole brief in one line, and the way into the rest of it. */
+    missionHeading: 'Make it lift 800 N per metre.',
+    missionConstraint: 'within 2 % · |C_m,c/4| < 0.08',
+    whyTarget: 'Why this target?',
+    crumb: '/ 01 The wing',
     editorAria: 'Airfoil profile: draggable control points',
     profile: 'Profile',
+    shapeHeading: 'Shape',
+    shapeTool: 'Shape',
     editShape: 'Edit shape',
     doneEditing: 'Done editing',
     resetProfile: 'Reset profile',
@@ -490,10 +482,10 @@ export default {
     studyHeading: 'Study',
     studyLead:
       'A single incidence, or a sweep. A sweep is the only way to get an aerodynamic centre, and it costs one solve rather than one per angle.',
-    advancedNote: 'numerics and study',
     noDrag:
       'No drag and no lift-to-drag ratio: this model is inviscid, so both are zero and a ratio of zeroes is not a metric. The chordwise force that does come out of the pressure integration is in the verification panel, where it belongs — it is an error bar.',
     surfacePressure: 'Surface pressure',
+    pressureCurve: 'Surface pressure curve',
     acrossSweep: 'Across the sweep',
     sweepNote:
       'The aerodynamic centre is the regression slope of the pitching moment against lift, subtracted from the quarter chord. Thin-airfoil theory says 0.25; thickness moves it slightly aft. The fit’s R² is shown because a straight line through a curve is not a point.',
@@ -1114,6 +1106,32 @@ export default {
       'A physics challenge: keep a 30 W device cool on a mass budget, and find the fin count where adding more starts making it worse. Predict where the optimum sits before you compute it.',
     eyebrow: 'Surface, the gap the air moves through, and mass',
     heading: 'How many fins do you actually need?',
+    planeLabel: 'Cut',
+    planeAria: 'Cutting plane through the solid',
+    planePosition: 'Where',
+    planePositionTitle: 'Where along the normal the plane sits.',
+    plane: {
+      z: 'Across it — the cross-section',
+      y: 'Through the base — where the spreading is',
+      x: 'Along a fin',
+    },
+    planeNote: {
+      z: 'A cross-section at {position} mm along the length. This is the picture the section solver draws, and away from the device it is not the same one.',
+      y: 'A cut through the metal at {position} mm above the base. The gradient along the length is the spreading resistance, seen directly.',
+      x: 'A cut at {position} mm across the base, looking along the extrusion.',
+    },
+    modelHeading: 'Section or solid',
+    modelLead:
+      'The cross-section is exact for an extrusion and assumes the device heats it evenly along its whole length. Solve the body instead and the device can be shorter than the sink — which costs a spreading resistance, and gains two cut ends.',
+    modelPick: 'What is solved',
+    model: {
+      section: 'The cross-section',
+      solid: 'The whole body',
+      sectionNote:
+        'The device is taken to heat the base evenly along the whole length. Exact for the conduction, and the assumption a real device breaks.',
+      solidNote:
+        'The device covers {covered}% of the length. The rest of the base has to reach its fins sideways, and the two cut ends are surface the section never had.',
+    },
     schematicTitle: 'Heat sink cross-section: a finned base with the device footprint underneath',
     legendMetal: 'aluminium',
     legendAir: 'air',
@@ -1168,6 +1186,12 @@ export default {
         'Still air, or a fan along the extrusion. The best fin count is not the same one.',
       velocity: 'Air speed',
       velocityTitle: 'Face velocity along the channels.',
+      depth: 'Extrusion length',
+      depthTitle:
+        'How long a piece of the extrusion this is. It has always been part of the answer — every watt and every gram is per unit depth multiplied by it — and where it travels depends on what is being solved.',
+      footprintDepth: 'Device length',
+      footprintDepthTitle:
+        'How much of that length the device actually touches. The section solver has nowhere to put this number; the solid one is built around it.',
       flush: 'Mounted flush',
       flushHint:
         'With the underside blocked by the mounting, it loses nothing. Unticked, the base cools from below as well.',
@@ -1203,6 +1227,11 @@ export default {
       viewFactor: 'View factor to room',
       h: 'Convection coefficient',
       flux: 'Peak conductive flux',
+      extruded: 'Resistance, extruded model',
+      spreading: 'Spreading resistance',
+      endGain: 'What the two ends give back',
+      endLoss: 'Heat out through the ends',
+      needsSolid: 'needs the whole body',
     },
     checks: {
       energy: 'Energy balance',
@@ -1223,6 +1252,7 @@ export default {
       mass: 'mass kg',
       radiative: 'rad. share',
       energy: 'energy',
+      depthCorrection: '3-D correction',
     },
     shapeLabel: '{fins} fins · {height} mm tall · {thickness} mm thick · {base} mm base',
     plots: {

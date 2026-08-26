@@ -1,18 +1,39 @@
 /**
- * A line plot, in SVG, in one file.
+ * A line plot, in SVG, in one file — with upstream's axis arithmetic underneath it.
  *
- * Four of the five planned exercises need one: a surface pressure distribution, an incidence
- * sweep, a convergence history, a frequency response. The protocol has no result kind for a
- * curve (filed upstream as fenix-spoon#69) and `<fs-viewer>` draws fields rather than lines, so
- * the lab draws its own.
+ * Four exercises need one: a surface pressure distribution, an incidence sweep, a fin-count
+ * sweep, a member ladder. This file used to say the protocol had no result kind for a curve
+ * and that the lab therefore drew its own. **The first half of that stopped being true**:
+ * protocol 1.5 put `series1d` on the wire (fenix-spoon#69, closed), and upstream now ships
+ * `<fs-plot>` to draw it.
  *
- * This is not a charting library and should not become one. It draws axes, traces, an optional
- * inverted y axis and a hover readout, from plain arrays of `[x, y]` pairs. Anything more
- * belongs in a dependency, and the moment that is true is the moment to reconsider ADR-009.
+ * ## Why this file still exists, and what it gave up
+ *
+ * `<fs-plot>` draws curves and nothing on top of them. Every plot in this lab carries a
+ * **reference mark** — the optimum fin count, the utilisation limit at 1, the edges of the flux
+ * bundle, the zero line on a `C_p` — and on three of the four pages that mark is the didactic
+ * point rather than a decoration. The widget has no annotation of any kind and no public
+ * projection to place one with: it paints to a canvas and keeps its scales private, so drawing
+ * a mark over it would mean reproducing its layout arithmetic from the outside and re-deriving
+ * it on every upstream bump. See
+ * [ADR-024](../../docs/architecture-decisions.md#adr-024--the-lab-takes-fenix-spoons-axis-arithmetic-and-keeps-its-own-renderer).
+ *
+ * What the lab does take is the half that is **pure, public and tested**:
+ * `@fenix-spoon/plot/scale.js` — extents, padding, round ticks, and the data-to-pixel map. That
+ * is the arithmetic where the interesting mistakes live, and it is now upstream's rather than
+ * this file's second copy of it. What is left here is the renderer, the marks and the legend.
+ *
+ * This is still not a charting library and should not become one. The moment it wants to be,
+ * the answer is the widget plus whatever it grew, not more code here.
  */
 
 import { el } from '/shared/components.js';
 import { t } from '/shared/i18n.js';
+
+// The scale module, not the package index: the index registers `<fs-plot>` as a side effect,
+// and a page that draws its own SVG has no use for a custom element it never mounts. `scale.js`
+// imports nothing at all, which is what makes it safe to take on those terms.
+import { extentOf, padDomain, scaleFor, ticksFor } from '@fenix-spoon/plot/scale.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const PAD = { left: 46, right: 10, top: 10, bottom: 30 };
@@ -23,29 +44,6 @@ function node(name, attrs = {}) {
     if (value !== null && value !== undefined) element.setAttribute(key, String(value));
   }
   return element;
-}
-
-/** Round a range outwards to a readable step, so the axis labels are not 0.7333. */
-function niceRange(min, max) {
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return { min: 0, max: 1, step: 0.5 };
-  if (max - min < 1e-12) return { min: min - 0.5, max: max + 0.5, step: 0.5 };
-  const raw = (max - min) / 4;
-  const magnitude = 10 ** Math.floor(Math.log10(raw));
-  const step = [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((s) => s >= raw) ?? magnitude * 10;
-  return { min: Math.floor(min / step) * step, max: Math.ceil(max / step) * step, step };
-}
-
-function ticks({ min, max, step }) {
-  const out = [];
-  // Accumulate by index rather than by repeated addition: 0.1 + 0.1 + 0.1 does not land on 0.3,
-  // and an axis labelled 0.30000000000000004 is its own bug report.
-  for (let i = 0; min + i * step <= max + step * 1e-6; i += 1) out.push(min + i * step);
-  return out;
-}
-
-function format(value, step) {
-  const digits = Math.max(0, Math.min(4, -Math.floor(Math.log10(step)) + (step < 1 ? 1 : 0)));
-  return value.toFixed(digits);
 }
 
 /**
@@ -66,19 +64,24 @@ export function drawCurve(container, spec) {
   }
 
   const width = Math.max(container.clientWidth || 520, 320);
-  const xs = niceRange(Math.min(...points.map((p) => p[0])), Math.max(...points.map((p) => p[0])));
-  const ys = niceRange(Math.min(...points.map((p) => p[1])), Math.max(...points.map((p) => p[1])));
-
   const plotW = width - PAD.left - PAD.right;
   const plotH = height - PAD.top - PAD.bottom;
-  const toX = (v) => PAD.left + ((v - xs.min) / (xs.max - xs.min)) * plotW;
-  const toY = (v) => {
-    const t = (v - ys.min) / (ys.max - ys.min);
-    // Inverted means *up is more negative*, which is the aeronautical convention for Cp and
-    // the reason this option exists at all: a Cp plot drawn the other way up reads as wrong to
-    // anyone who has seen one before.
-    return invertY ? PAD.top + t * plotH : PAD.top + (1 - t) * plotH;
-  };
+
+  // A degenerate range is `usableDomain`'s problem, not this file's: it widens a constant
+  // trace around its own value rather than dividing by a zero span. That guard used to live
+  // here and is one of the things this import deletes.
+  const xDomain = padDomain(extentOf(points.map((p) => p[0])) ?? { min: 0, max: 1 }, 'linear');
+  const yDomain = padDomain(extentOf(points.map((p) => p[1])) ?? { min: 0, max: 1 }, 'linear');
+  const xs = scaleFor(xDomain, PAD.left, width - PAD.right, 'linear');
+  // Inverted means *up is more negative*, which is the aeronautical convention for `C_p` and
+  // the reason this option exists: a `C_p` plot drawn the other way up reads as wrong to
+  // anyone who has seen one before. Expressed as which pixel the domain minimum lands on,
+  // which is how `<fs-plot>` expresses it too — same call, same two arguments swapped.
+  const ys = invertY
+    ? scaleFor(yDomain, PAD.top, height - PAD.bottom, 'linear')
+    : scaleFor(yDomain, height - PAD.bottom, PAD.top, 'linear');
+  const toX = (value) => xs.project(value);
+  const toY = (value) => ys.project(value);
 
   const svg = node('svg', {
     viewBox: `0 0 ${width} ${height}`,
@@ -87,33 +90,33 @@ export function drawCurve(container, spec) {
     'aria-label': t('curve.aria', { y: yLabel, x: xLabel }),
   });
 
-  for (const value of ticks(ys)) {
+  for (const tick of ticksFor(ys)) {
     svg.append(
       node('line', {
         class: 'curve__grid',
         x1: PAD.left,
         x2: width - PAD.right,
-        y1: toY(value),
-        y2: toY(value),
+        y1: toY(tick.value),
+        y2: toY(tick.value),
       }),
     );
     const label = node('text', {
       class: 'curve__tick',
       x: PAD.left - 6,
-      y: toY(value) + 3.5,
+      y: toY(tick.value) + 3.5,
       'text-anchor': 'end',
     });
-    label.textContent = format(value, ys.step);
+    label.textContent = tick.label;
     svg.append(label);
   }
-  for (const value of ticks(xs)) {
+  for (const tick of ticksFor(xs)) {
     const label = node('text', {
       class: 'curve__tick',
-      x: toX(value),
+      x: toX(tick.value),
       y: height - PAD.bottom + 16,
       'text-anchor': 'middle',
     });
-    label.textContent = format(value, xs.step);
+    label.textContent = tick.label;
     svg.append(label);
   }
 

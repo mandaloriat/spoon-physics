@@ -167,58 +167,80 @@ it is for.
 
 ## ADR-007 — The dependency is pinned to a commit, in four places, checked by a script
 
-**Decision.** Fenix Spoon is pinned to commit `4e7c296a7d351575194e25a1d4ebc1c703a6e08f`.
+**Decision.** Fenix Spoon is pinned to commit `3d483a38d619b3b6c2d88e798ca0be5420d5ef6d`.
 Never `main`, never `latest`.
 
-**What this pin carries, and why the lab moved to it.** Protocol 1.9. The pin before it
-(`988ad64`) carried 1.2 and the capability declaration a solver adapter can make — `physics`,
-`availability`, `requires`, `metrics`, `artifacts`, `features` and `examples`, plus the three
-progressive-discovery operations — which is what the airfoil and magnetics exercises are built
-on. Four minors have landed since, and the bridge exercise needs two of them:
+**What this pin carries, and why the lab moved to it.** Protocol **1.17**, and the reason is
+three dimensions. The pin before it (`4e7c296`) carried 1.9 — a geometry that can name pieces
+of its own boundary and a load case that says what happens there, which is the whole of
+[ADR-019](#adr-019--the-bridge-carries-its-lattice-in-params-because-the-protocol-has-no-network-geometry)'s
+"loaded at one or more joints or stretches" — and `988ad64` before that carried 1.2 and the
+capability declaration the airfoil and magnetics pages read. Eight minors have landed since
+1.9, and the heat sink needs the last of them:
 
-- **1.8, a geometry can name pieces of its own boundary.** `boundaries` on `domain2d` and
-  `regions2d`, with `part` / `points` / `near` / `box` / `all_of` selectors resolving to a
-  predicate over coordinates.
-- **1.9, a load case says what happens there.** `conditions` on a job request, keyed by those
-  names, refused rather than ignored when a name or a key is one nobody declared.
+- **1.17, a body can have a thickness.** `regions3d` — a box filled with parametric solids
+  (`box3d`, `cylinder3d`, `helix3d`), painter's order as in the plane, and a `void` flag that
+  cuts a solid away instead of filling it. `mesh3d` beside it, the first result kind whose
+  points have three coordinates. And a `slice` field query that cuts an axis-aligned plane
+  through one and hands back a `grid2d` — which is why a solid is visible in `<fs-viewer>`
+  with no new rendering code anywhere.
 
-Together they are the whole of [ADR-019](#adr-019--the-bridge-carries-its-lattice-in-params-because-the-protocol-has-no-network-geometry)'s
-"loaded at one or more joints or stretches": the geometry says *where*, the load case says
-*what*, and neither can be silently dropped. 1.6 (a metric declares what it is taken over) and
-1.7 (an artifact knows which instant it holds) come along and are unused here — nothing in the
-lab is transient yet.
+What that buys is a **refusal**, and it is the one upstream's
+[ADR 0006](https://github.com/mandaloriat/fenix-spoon/blob/main/docs/adr/0006-three-dimensions.md)
+is named after: every plane kind carries an unwritten *per unit depth*, and until 1.17 a caller
+who meant a real body could neither say so nor be told. The heat sink is exactly that caller —
+[ADR-023](#adr-023--the-heat-sink-gets-a-third-dimension-and-what-it-buys-is-the-spreading-resistance).
 
-The upgrade was verified to be purely additive first: between the two commits no shipped
-solver's `Params` model changed a field, which is the one thing that would have altered the
-parameter form the pages generate from `params_schema`. Every existing test passed unchanged,
-and the three committed thumbnails regenerated **byte for byte identical**, which is a
-stronger statement than a green suite — no shipped solver's numbers moved.
+The seven minors in between arrive unused, and they are not uninteresting: 1.10 to 1.12 put the
+workspace, studies and optimisations over HTTP, 1.13 adds `axisymmetric2d`, 1.14 an eigensolve,
+1.15 adapters loaded from somewhere other than upstream's own tree, 1.16 what a nonlinear
+solve's answer is worth. The lab reads none of them today, and each is a page that does not
+exist yet rather than a capability that was passed over.
 
-**One assertion in the browser suite had to be inverted, and it is the good kind.** The
-`<fs-viewer>` at the old pin computed its colour range from the data and exposed only a getter,
-so the lab's Lock scale tool was drawn *disabled, with the reason*, and a test asserted exactly
-that. The new pin adds the setter and `autoRange` beside it. Because `viewerCapabilities`
-probes for the **property** rather than checking a version, the tool turned itself on; what
-changed in the lab was the four lines that implement the lock and the test that had always been
-the one to move.
+**The upgrade was verified additive before it was made**, the same way the last one was. No
+shipped solver's `Params` model changed a field, which is the one thing that would have altered
+a parameter form generated from `params_schema`. Every test passed unchanged — 358 of them,
+with the only failures the eight that need `scripts/fetch-widgets.sh` to have run first — and
+the four committed thumbnails regenerated **byte for byte identical**, which is a stronger
+statement than a green suite: no solver's numbers moved.
 
-Note what the metric declaration still is at this commit: **declared, not computed.** Upstream
-says so plainly — the values are issue #46 — so a metric a solver publishes in `metrics` is a
-promise about what it will report, and the result envelope has nowhere to put the number yet.
-That is why a lab solver carries its metrics in a declared artifact for now (ADR-015).
+**One browser-side name did change, and it missed us.** 1.17 widened `isFieldResult` in
+`@fenix-spoon/client` to admit a solid, and moved the question "can the canvas draw this?" to a
+new `isDrawableField`. A page that had used the old name as a drawability test would now hand a
+tetrahedral mesh to a canvas renderer and draw nothing. The lab uses neither name — it asks the
+viewer for its capabilities instead — so the check was a grep and the answer was zero hits.
 
-**Why a commit and not a release.** There is no release and no tag to use: upstream's
-`git ls-remote --tags` is empty. A commit SHA is the strongest pin available, and it is a
-complete one — it fixes the server, the solvers, the protocol models and the widget source
-together.
+**The bump before this one inverted one assertion in the browser suite, and it was the good
+kind.** The `<fs-viewer>` at `988ad64` computed its colour range from the data and exposed only
+a getter, so the lab's Lock scale tool was drawn *disabled, with the reason*, and a test
+asserted exactly that. `4e7c296` added the setter and `autoRange` beside it. Because
+`viewerCapabilities` probes for the **property** rather than checking a version, the tool turned
+itself on; what changed in the lab was the four lines that implement the lock and the test that
+had always been the one to move. That probe is why this bump needed no equivalent.
 
-**Why the image tags are what they are.** GHCR carries `sha-4e7c296` (FEniCSx, dolfinx
-v0.11.0, digest `sha256:08213ca6…`) and `sha-4e7c296-slim` (mock solvers only, digest
-`sha256:8189808c…`). `dolfinx-v0.11.0` is the same image today but is re-pointed on every
-push to `main`, so it is not a pin. And `latest` / `latest-slim` **do not exist**, despite
-what upstream's README says — the publish workflow tags `latest` only on a `v*` git tag,
-and none has been pushed. Anyone debugging a failed pull should know that before they
-"fix" it by switching to a tag that has never existed.
+Note what a declared metric is at this commit: **computed, and in the envelope.**
+`fill_declared_metrics` reduces any metric whose spec names a `field` and a `reduction`, and
+`SolverResult` carries `metrics`, `series` and `warnings` natively. This record used to say the
+opposite — "declared, not computed, the values are issue #46" — and that had been out of date
+since `4e7c296` at the latest. [ADR-015](#adr-015--the-run-table-lives-in-the-browser-and-fenix-spoon-owns-the-record)'s
+account of what a lab solver must therefore do about it is the next thing to revisit, and
+deliberately not in this change.
+
+**Why a commit and not a release.** Upstream cut **v0.1.0** on 2026-08-06, so
+`git ls-remote --tags` is no longer empty — which is what this paragraph used to rest on. The
+tag is still not usable here, and for a sharper reason than habit: it points at `b556e4a`,
+three commits before `regions3d` exists, so pinning to the release would mean pinning away the
+capability this bump is for. A commit SHA remains the strongest pin available and a complete
+one — it fixes the server, the solvers, the protocol models and the widget source together.
+When a release carries 1.17, this decision is worth reopening on its merits.
+
+**Why the image tags are what they are.** GHCR carries `sha-3d483a3` (FEniCSx, dolfinx
+v0.11.0, digest `sha256:58b368b7…`) and `sha-3d483a3-slim` (mock solvers only, digest
+`sha256:515834de…`). `dolfinx-v0.11.0` is the same image today but is re-pointed on every
+push to `main`, so it is not a pin. `latest` and `latest-slim` **now exist**, and the version of
+this paragraph written at the last bump said flatly that they did not: the publish workflow tags
+them on a `v*` git tag, and v0.1.0 is that tag. They are still not pins, and what they point at
+is the release — which for the lab means a server with no `regions3d` in it.
 
 **Where the pin lives, and why in four kinds of place.** `pyproject.toml` (what pip resolves),
 `Dockerfile` build args (what the image is built from), the compose files, `.env.example` and
@@ -274,19 +296,28 @@ than merely tedious.
 
 ## ADR-008 — The browser widgets are built from source, not installed
 
-**Decision.** `@fenix-spoon/{client,geometry-2d,viewer}` are built from the pinned Fenix
+**Decision.** `@fenix-spoon/{client,geometry-2d,viewer,plot}` are built from the pinned Fenix
 Spoon checkout and vendored into `frontend/vendor/`, which is generated and gitignored.
 
 **Why.** They are not published to npm — upstream says so, and `npm view` confirms it. The
 alternatives were to commit someone else's build output (thousands of lines to review on
 every bump, and no provenance), or to add Fenix Spoon as a git submodule (a second checkout
-to keep in step, for three ES modules). Building from the pin at image-build time keeps the
+to keep in step, for a handful of ES modules). Building from the pin at image-build time keeps the
 bytes reproducible and their origin explicit: the vendor directory carries a `COMMIT` file,
 and `check-pins.sh` reads it.
 
 **Cost.** A build step. `./scripts/fetch-widgets.sh` for a local checkout; a Node stage in
 the Dockerfile otherwise. A checkout that skips it serves a page that does nothing, which
 is why both a Python test and the page itself detect and report it.
+
+And a *list*, in two places that cannot be derived from one another: the script's loop and the
+Dockerfile's `COPY --from=widgets` lines. `plot` was the first package added since both existed,
+and adding it to one and not the other would have given a container whose import map resolves to
+a 404 while the developer's machine was fine — the same shape as
+[ADR-007](#adr-007--the-dependency-is-pinned-to-a-commit-in-four-places-checked-by-a-script)'s
+partial bump. `test_the_image_vendors_the_same_widgets_the_script_does` compares them, and
+[ADR-024](#adr-024--the-lab-takes-fenix-spoons-axis-arithmetic-and-keeps-its-own-renderer) is why
+`plot` is on the list at all.
 
 ---
 
@@ -558,14 +589,33 @@ and convergence ladders (#48). A second implementation here would be a parallel 
 migrate off, and it would be the *wrong* half — the lab would own persistence, which it has no
 business owning, while still lacking the typed metrics that make a row comparable.
 
-**What that costs today.** Protocol 1.2's result envelope has nowhere to put a computed
-metric, a warning, or a 1-D curve. So a lab solver returns the field as `grid2d`/`mesh2d`,
-restricts `stats` to what the solve cost, and writes one always-present `report.json`
-artifact carrying metrics, curves, verification residuals and warnings — declared as an
-`ArtifactSpec` so it is discoverable before submitting. It is protocol-legal, it invents no
-private convention on top of `stats`, and its content is exactly the payload that becomes
-native `metrics` when #46 lands: at that point the page reads the envelope and the artifact
-becomes optional.
+**What that cost, and what it costs now.** This is the part of the record that expired, and it
+is corrected here rather than left standing.
+
+It used to read: protocol 1.2's envelope has nowhere to put a computed metric, a warning or a
+1-D curve, so a lab solver returns the field, restricts `stats` to what the solve cost, and
+writes one always-present `report.json` artifact carrying metrics, curves, residuals and
+warnings — declared as an `ArtifactSpec` so it is discoverable before submitting — and *at that
+point the page reads the envelope and the artifact becomes optional*.
+
+**That point arrived, and nobody came back to this record.** #46 landed: `SolverResult` carries
+`metrics`, `fill_declared_metrics` computes any metric whose spec names a `field` and a
+`reduction`, 1.3 added `residual` and `warnings` under `diagnostics`, and 1.5 added `series`.
+All four were already true at the `4e7c296` pin, which is to say for the whole life of the
+bridge and of the heat sink. `lab.heatsink2d` is the worked example and the only page that took
+the hint: it writes no artifact, the envelope carries everything, and `buildReport` on that page
+is a view over the result with no second round trip.
+
+**What is still true is smaller, and worth stating exactly.** Three exercises — the aerofoil,
+the magnetic circuit and the bridge — still declare and fetch `report.json`, and three page
+comments still said they did so "until #46 lands"; those comments now say what is actually the
+case. The artifact is not wrong to *work*, and it is still the right carrier for what does not
+belong in an envelope. Moving the metrics out of it is three solvers and three pages, it changes
+what a saved run row is built from, and it is deliberately not done in the change that corrected
+this paragraph. It is the next piece of work here, and the heat sink is the shape to copy.
+
+The rest of this decision is unaffected: where the run *table* lives was never an argument about
+where a metric travels.
 
 **Cost.** Runs are lost when the visitor clears their browser, and cannot be shared by URL.
 For an anonymous public demo that is the honest state of affairs rather than a limitation to
@@ -1019,6 +1069,17 @@ same argument that makes the homepage thumbnails real solves rather than illustr
 caught a real error immediately: the first flow diagram ran its streamlines straight *through*
 the section, which is the precise opposite of what the chapter beside it explains.
 
+**And generated geometry does not make a drawing right**, which the same two diagrams then
+proved twice. The flow figure tilted its *frame* and left the section flat inside it, so the
+streamlines carried the stream's slope and the shape did not: the pair that should have hugged
+the two surfaces ran an eighth of a chord above the back of the section and out through its
+tail — the very failure the paragraph above says was caught. It now tilts the geometry instead
+and reads the streamlines off the tilted surfaces, so the picture has one frame and cannot
+disagree with itself. The slice figure had the other half of that failure, a drawing that was
+self-consistent and still said the wrong thing: it cut the wing with a plane laid *along* the
+span, which is a plane no section falls out of. A slice is taken across the span, and the figure
+now takes it there. Both are pictures, and a picture is checked by looking at it.
+
 **A preset is a click, so it may solve.** The last chapter offers six incidences, and each one
 sets the control and presses Run.
 [ADR-010](#adr-010--public-demo-limits-and-what-they-do-not-cover) forbids solving on load and
@@ -1122,6 +1183,225 @@ which is why the hierarchy went first.
 
 ---
 
+## ADR-023 — The heat sink gets a third dimension, and what it buys is the spreading resistance
+
+**Decision.** `lab.heatsink3d` is a **second capability** beside `lab.heatsink2d`, not a
+parameter on it. It takes `regions3d`, returns `mesh3d`, and reads the extrusion length off the
+geometry's `z` extent instead of out of `params`. The plane adapter keeps the fin-count sweep
+and the finer grid; neither is deprecated, and the page offers the choice.
+
+**Why a third dimension at all, when the plane solve is exact.** It *is* exact — an extrusion is
+prismatic, so there is no third-dimension conduction to neglect, and `lab.heatsink2d` says so in
+an assumption. What it also assumes, in the same breath, is that **the device heats the base
+evenly along the whole length**. A 30 mm die on a 60 mm extrusion does not. The heat has to run
+sideways along the base to reach the far fins, and that run costs a temperature drop the plane
+problem has nowhere to put.
+
+That is exactly the failure upstream's
+[ADR 0006](https://github.com/mandaloriat/fenix-spoon/blob/main/docs/adr/0006-three-dimensions.md)
+admitted `regions3d` to prevent: a plane kind carries an unwritten *per unit depth*, so a caller
+who means a real body can neither say so nor be told. Until protocol 1.17 the length travelled
+as `params.depth` — a multiplier no server could check — and the lab was the caller in question.
+
+**Two capabilities and not a switch, because the refusal is the whole point.** A boolean on one
+adapter would accept either payload and answer whichever problem it felt like. Two adapters
+declaring different `geometry_types` make each refusal a `422` from the server before any lab
+code runs, and it cost one line each. `tests/test_app.py` submits both ways round.
+
+**What it found, and the finding is not the one that was expected.** The third dimension adds
+**two** effects of opposite sign, so the run is three solves and every term is measured rather
+than apportioned:
+
+```
+R  =  R_extruded  +  spreading  -  end_gain
+```
+
+- `R_extruded` — `lab.heatsink2d`'s answer, on the **same in-plane grid**, so the difference is
+  the third dimension and not two discretisations disagreeing;
+- `spreading` — the same body with its two cut ends held adiabatic, which isolates the sideways
+  run. Always positive;
+- `end_gain` — what the two ends give back, because they are surface and the plane model has
+  none.
+
+On the nominal 60 mm sink the ends are worth **more** than the spreading costs, and the plane
+model comes out about 2.6% *pessimistic*. Stretch the same die to a 200 mm extrusion and the
+spreading wins by about 14%. Reporting only the net would have read as *three dimensions do not
+matter here*, when what is true is that two effects of a few percent happened to cancel — so
+the two terms are reported separately and `end_loss_fraction` measures the second one directly.
+
+**The claim that three dimensions add exactly one thing is tested, not asserted.** There is a
+configuration in which the extra thing does nothing: device along the whole length, ends shut.
+There `lab.heatsink3d` reproduces `heatsink.solve` on the same grid to eleven figures, and the
+agreement is reported to the visitor as the `extruded_limit` residual rather than living only in
+a test. Everything on the boundary is *reused* rather than reimplemented — the channel is the
+same channel, longer — so `correlations.py` and `viewfactors.py` are untouched and the one new
+approximation, radiative exchange **along** a channel, is declared as `prismatic_radiation`.
+
+**What comes back, and why the browser needed nothing.** A `mesh3d`, retiled coarser than the
+solve grid — by the same rule, so no fin disappears — because six tetrahedra per solved cell is
+tens of megabytes of JSON for a picture nobody can see that finely. The page draws it by asking
+for a `slice`, which is a `grid2d`, which is what `<fs-viewer>` has drawn since 1.0. **Zero
+lines of rendering code**, which is ADR 0006 §6 working as advertised and the reason the lab
+could take three dimensions in one change rather than in a WebGL project.
+
+**Cost.** Three things, all real.
+
+- **Time.** Six seconds at the shipped resolution against one for the section, and a plane
+  change is a round trip of about a second and a half. The fin-count sweep — twenty solves, and
+  the point of the exercise — stays on the plane solver, and the button is disabled rather than
+  hidden so a visitor can see why.
+- **A coarser grid.** The cell count is the section times the stations, so the in-plane grid
+  ships coarser here than the plane adapter's default. The reference solve runs on the same one,
+  which is what keeps the *difference* trustworthy even where the absolute number is coarser.
+- **A metric declaration that had to be weakened.** `t_max` and `flux_max` are declared with no
+  `field`/`reduction` here, unlike on the plane adapter. Upstream would happily compute them
+  from the declaration — but from the *retiled* mesh, which is not the field the peak came from,
+  and two answers to one question is the failure. The adapter supplies both instead.
+
+**What this does not do.** It does not make the heat sink a 3-D exercise. The challenge is still
+fin count, the sweep is still the headline, and the solid is the second question a visitor asks
+once the first has an answer.
+
+
+---
+
+## ADR-024 — The lab takes Fenix Spoon's axis arithmetic, and keeps its own renderer
+
+**Decision.** `shared/curve.js` stays, and imports `@fenix-spoon/plot/scale.js`. The
+`<fs-plot>` element is vendored and not used. The import map names the **module**, not the
+package, so the element cannot be reached by accident.
+
+**What changed upstream.** `curve.js` opened by saying the protocol had no result kind for a
+curve, filed as [fenix-spoon#69](https://github.com/mandaloriat/fenix-spoon/issues/69), and that
+the lab therefore drew its own. Protocol 1.5 closed that: `series1d` is on the wire, and
+`@fenix-spoon/plot` now draws it, with per-trace abscissae, log axes, a hover readout and a
+canvas that describes itself to a screen reader. On the face of it that is a file to delete.
+
+**Why it is not.** Every plot in this lab carries a **reference mark**, and on three of the four
+pages the mark is the didactic point rather than a decoration:
+
+| Page | Mark | What it is |
+|---|---|---|
+| heat sink | vertical, labelled *best* | the optimum fin count — the answer the sweep exists to show |
+| bridge | horizontal at 1, labelled *capacity* | the line a member fails above |
+| magnetic circuit | two verticals | where `A_z` turns over: the edges of the flux bundle, which is what leakage is measured against |
+| aerofoil | horizontal at 0 | the `C_p` zero line |
+
+`<fs-plot>` has no annotation of any kind — not a rule, not a band, not a label — and it has no
+public projection to place one with. It paints to a `<canvas>` and keeps its scales private, so
+an overlay would mean reproducing the element's layout arithmetic (its padding, its
+`padDomain` fraction, its inverted-y convention) from the outside, and re-deriving it on every
+upstream bump. That is a coupling to private internals, and it would fail silently — a mark
+half a cell off is a mark nobody notices is wrong.
+
+The lab has done the equivalent before and it worked, once: `workspace.js` projects its own
+annotations over `<fs-viewer>`. What makes that sound and this unsound is that the viewer's
+mapping is a documented linear map onto the element's own box, stated in its source and
+depended on deliberately. The plot's is neither documented nor stable.
+
+**So the split is by what is safe to depend on.** `scale.js` is pure, public, has no imports of
+its own and is tested upstream: extents, padding that means the same thing on a log axis as on a
+linear one, round ticks, and the data-to-pixel map. That is precisely where the interesting
+mistakes in a plot live, and this repository had its own second copy of all of it —
+`niceRange`, `ticks`, `format`, two projection closures. Those are deleted. What is left in
+`curve.js` is the renderer, the marks and the legend, which is the part upstream does not offer.
+
+**What it costs, and one thing it buys back.** The axis ranges moved: the old code snapped the
+domain outward to a round step, the new one pads it by a twentieth and puts round numbers
+*inside*. Every plot on the site is therefore drawn slightly differently than before — checked
+by eye rather than asserted, because "the axis looks right" is not a property a test has. What
+it buys back is that the lab's SVG plots and any future `<fs-plot>` now agree on where a value
+lands, because they are running the same three functions.
+
+**What would make the element win.** A `marks` property, or any public projection. Either turns
+this from a decision into a deletion, and the migration is then the seven call sites and this
+record. Worth raising upstream with the table above attached — the same sequence
+[ADR-018](#adr-018--the-magnetics-exercise-gets-its-own-solver-and-its-challenge-is-not-a-gap-force)
+followed: build where the benchmark is, offer afterwards with evidence.
+
+**A fifth place the widget set is named, found while doing this.** `scripts/fetch-widgets.sh`
+loops over the packages; the Dockerfile has its own `COPY --from=widgets` lines. Adding
+`plot` to one and not the other gives a container whose import map resolves to a 404 while the
+developer's machine is fine — the [ADR-007](#adr-007--the-dependency-is-pinned-to-a-commit-in-four-places-checked-by-a-script)
+failure with a package in place of the pin, and the same symptom: nothing happens, and nothing
+says why. `test_the_image_vendors_the_same_widgets_the_script_does` now compares the two lists.
+
+---
+
+## ADR-025 — The site becomes an instrument: dark ground, one accent, and less prose on the first screen
+
+**Decision.** The site is redesigned to an **instrument-first** identity, from a design handoff
+carried out at high fidelity: dark ground, a single cyan accent, the computed field as the
+primary visual, mono uppercase labels, square corners everywhere, and drastically less prose on
+the first screen of every page. Shipped for the **site shell** (header, language switch,
+footer), the **homepage**, and the **airfoil bench**; the other three exercise pages share the
+shell and the dark palette and keep the ADR-017 bench arrangement until they migrate to the same
+layout, one page at a time.
+
+**What the shell is now.** One plain 56 px header row — the `◦∿` mark, the wordmark in mono
+caps, a breadcrumb chip on a bench page (`/ 01 The wing`), and a single nav link: `Code`, or
+`Model details` on a bench that has the row to anchor to. The language switch keeps ADR-020's
+behaviour to the letter — two real links to `?lang=xx` — and only changes clothes. The footer
+carries three things: the way into the advanced lab (which replaces the homepage shelf), the
+attribution, and one caveat line — *Models for exploring ideas, not professional engineering
+tools* — which replaces the boxed disclaimer on the redesigned pages. The static markup keeps a
+fallback footer with that line, because the sentence is a requirement of the project and must
+not depend on a module graph loading.
+
+**What the homepage is now.** Hero (the invitation beside a real computed field with a mono
+readout of the facts it was solved at), three challenge cells that are links — meta row,
+question, one mission line, the field — a loop strip (*01 Predict · 02 Compute · 03 Compare*
+and the one sentence about numbers describing reality badly), the folded method section, and
+the footer. The tagline ADR-016 fixed and ADR-022 replaced is dropped altogether; the hero is
+the claim. The hero's readout states only what is true of the committed thumbnail —
+`scripts/make-thumbnails.py` solves NACA 2412 at α = 4.6°, 40 m/s — and carries no timer,
+because a static page cannot honestly own one. The thumbnails are regenerated at 2× for the
+hero plate (a finer solve, not an upscale; the script's `THUMB_WIDTH` exists for this).
+
+**What the airfoil bench is now.** Mission strip (the whole brief in one line, and *Why this
+target?* opening the plain statement, the live targets and the ADR-021 lesson) → instrument
+(the field in a bounded plate on a gridded ground, tools overlaid at the corners: PAN · PROBE ·
+SHAPE · FIT with the field picker, the colour scale, the annotation layers, the probe readout)
+→ rail (the three choices that change the answer; everything else behind *Shape, air and
+numerics*, closed; then the Reading — the two mission numbers at 34 px against their goals, and
+the two credibility indicators as lights, `● settled` / `● in range`, amber with today's
+wording when they fail) → action bar (Compute, Keep attempt, the verdict, and the kept attempts
+as chips: `01 α 4.0° · 728`) → the model-details row, whose links open the contract's sections
+as drawers. **Nothing is deleted**: all nine contract sections remain reachable; they stop
+being stacked panels. The zoom in/out/reset buttons fold into Fit plus the wheel and the
+keyboard, keeping ADR-017's disabled-with-a-reason rule for what remains.
+
+**The prediction moves, and its rules do not.** The four-step path bar is no longer displayed
+(`mountPath` still records, so nothing downstream loses its storage), and the prediction is
+asked inline, above the action bar, the first time Compute is pressed with no stored answer.
+All three of `journey.js`'s rules stand: it never gates the solve, it is never scored, and it
+stays a radio group with *Not sure yet* as a first-class answer.
+
+**Colour, and what this supersedes.** One accent. This walks back ADR-021's two-colour rule as
+a page-wide system — blue for the instrument, violet for the lesson voice — to exactly one
+place: violet survives *inside the guided lesson's own output*, which is the only place the
+explaining voice still renders, so the handover from story to bench is still visible where
+there is a story. ADR-016's tagline placement and ADR-022's card anatomy (badge, problem
+paragraph, CTA) are superseded as described above; ADR-022's substance — predict first, plain
+statement first, two credibility indicators, no formula on the homepage — is kept whole.
+Fraunces is dropped with the serif voice, which also removes the site's only self-hosted font
+(67 kB); both faces are now stack-only.
+
+**Dark is the only mode.** The handoff left the choice open — ship dark-only, or derive a light
+counterpart before writing the CSS. Decided for dark-only: the field plate, the overlay halo
+palette and the grid texture are all authored against this ground, and a light derivation would
+be a second design pretending to be a theme. `color-scheme: dark` ships in the tokens and on
+every page's meta, so browser form controls agree.
+
+**Cost, stated plainly.** The four pages are no longer one layout: until the other three
+migrate, `lab.css` carries the ADR-017 bench and the instrument bench side by side, scoped
+under `.bench--instrument`. A returning visitor's muscle memory for the stacked panels is
+spent. And the lesson is now behind a click (*Why this target?*) rather than above the mission
+— accepted because the mission strip a first-timer meets is one plain sentence, not the
+symbol wall ADR-021 was built to soften, and the way in sits beside the very line it explains.
+
+---
+
 ## Deferred
 
 Not built, on purpose. Each would have been a plausible use of the kickstart's time; none
@@ -1136,7 +1416,7 @@ would have made the one finished experiment better.
 | **Per-IP rate limiting on by default** | Needs a custom Caddy build. Configured and commented in the Caddyfile; see ADR-010. |
 | **Publishing the lab image to GHCR** | The server builds from the checkout, which keeps one source of truth while the project is one person and one machine. A published image matters when a second deployment does. |
 | **A FEniCSx job in CI** | Would mean pulling a 3 GB image and running a real solve on every push, for a code path this repository does not own — the adapters are upstream's and are tested there in that exact image. CI builds and runs the slim image, which exercises everything the lab actually wrote. |
-| **STEP upload, 3D, Navier–Stokes, automatic optimisation** | All need protocol capabilities that do not exist yet: `step3d` geometry, 3D result kinds. (Vector fields were in this list and are not any more — both lab solvers that have one publish it, and the workspace integrates streamlines from it.) Upstream's roadmap, not the lab's. |
+| **STEP upload, Navier–Stokes, automatic optimisation** | Still upstream's roadmap rather than the lab's. `step3d` in particular is *deliberately* unasked upstream — an imported face has no name that survives a re-import, so a load case could bind to a face that silently moved — and that reasoning is now written down rather than pending. (3-D was in this row and is not any more: protocol 1.17 landed `regions3d` and `mesh3d`, and [ADR-023](#adr-023--the-heat-sink-gets-a-third-dimension-and-what-it-buys-is-the-spreading-resistance) is the lab using them. Vector fields left before that, for the same kind of reason.) |
 | **MCP / local agent interface** | No longer unimplemented upstream — M2.5 landed whole in the pin the lab now runs, so `fenix-spoon rpc --stdio`, the MCP adapter and the CLI all exist. Still deferred here, and for a different reason than before: the lab is a *public web* application with anonymous quotas, and none of those transports is reachable through a browser. What would bring it back is a reason for a script to drive this deployment rather than its own. |
 | **A continuous incidence control** | The panel method is exactly linear in α, so two solves determine the flow at *every* angle and a slider could redraw the field at 60 fps with no further jobs — which would fix both halves of what ADR-021 measured: three seconds and 2.5 MB per preset click, against a budget of 100 jobs an hour shared by everyone. It is a proposal rather than a commit because of §8 of the contract, not because of the arithmetic: the page would be showing numbers it computed itself from a basis the solver published, and in a lab that reports a residual on every run that is a different claim and needs its own verification, its own answer to what a kept run records, and a rule for when the basis goes stale. Written up in [docs/proposals/instant-incidence.md](proposals/instant-incidence.md). What would bring it back is a session willing to spend itself on the verification story rather than on the interpolation. |
 | **Analytics** | None. A page that reports nothing needs no cookie banner and no privacy policy, and the lab collects no personal data at all. |

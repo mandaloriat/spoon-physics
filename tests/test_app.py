@@ -140,6 +140,80 @@ def test_a_magnetostatics_job_returns_the_fields_the_page_reads(client, solenoid
     assert max(abs(value) for value in scalars["B"]) > 0.0
 
 
+def test_a_solid_job_comes_back_as_a_mesh3d_and_can_be_sliced(client, heatsink3d_geometry):
+    """The 3-D pipeline end to end, and the part of it a page depends on.
+
+    Two things are asserted and the second is the interesting one. A `mesh3d` arrives inline,
+    which is protocol 1.17. And a `slice` through it comes back as a `grid2d` — the kind
+    `<fs-viewer>` has drawn since 1.0 — which is why a solid is visible in this lab with no
+    rendering code anywhere. That is upstream's ADR 0006 §6 working as advertised, and if it
+    stops working the heat-sink page goes blank rather than erroring.
+    """
+    submitted = client.post(
+        "/api/v1/jobs",
+        json={
+            "solver": "lab.heatsink3d",
+            "geometry": heatsink3d_geometry,
+            "params": {
+                "cell_size": 0.003,
+                "depth_cell_size": 0.006,
+                "display_cell_size": 0.006,
+                "decompose": False,
+            },
+        },
+    )
+    assert submitted.status_code == 202, submitted.text
+    job_id = submitted.json()["job_id"]
+
+    with client.websocket_connect(f"/api/v1/jobs/{job_id}/events") as socket:
+        while True:
+            event = json.loads(socket.receive_text())
+            if event["type"] == "status" and event["status"] in {"done", "failed", "cancelled"}:
+                assert event["status"] == "done", event
+                break
+
+    body = client.get(f"/api/v1/jobs/{job_id}/result").json()
+    assert body["kind"] == "mesh3d"
+    assert len(body["data"]["points"][0]) == 3
+    assert body["data"]["point_fields"]["T"]
+    assert body["metrics"]["thermal_resistance"] > 0.0
+
+    cut = client.post(
+        f"/api/v1/jobs/{job_id}/query",
+        json={"field": "T", "op": "slice", "axis": "y", "value": 0.002, "samples": 32},
+    )
+    assert cut.status_code == 200, cut.text
+    plane = cut.json()["result"]
+    assert plane["kind"] == "grid2d"
+    temperatures = [v for v in plane["data"]["fields"]["T"] if v == v]
+    assert max(temperatures) > min(temperatures), "a slice through the base shows the spread"
+
+
+def test_the_two_heat_sink_adapters_refuse_each_other_s_geometry(
+    client, heatsink3d_geometry, solenoid_geometry
+):
+    """The refusal protocol 1.17 was admitted to make, in the lab that needed it.
+
+    A `regions2d` carries an unwritten "per unit depth". Sent to a solver that means a body,
+    the honest answer is a 422 naming the kinds it takes — not a number that is wrong by
+    whatever the spreading resistance happened to be. The check runs both ways, because the
+    reverse is the same failure with the roles swapped.
+    """
+    solid_to_plane = client.post(
+        "/api/v1/jobs",
+        json={"solver": "lab.heatsink2d", "geometry": heatsink3d_geometry, "params": {}},
+    )
+    assert solid_to_plane.status_code == 422, solid_to_plane.text
+    assert "regions2d" in solid_to_plane.text
+
+    plane_to_solid = client.post(
+        "/api/v1/jobs",
+        json={"solver": "lab.heatsink3d", "geometry": solenoid_geometry, "params": {}},
+    )
+    assert plane_to_solid.status_code == 422, plane_to_solid.text
+    assert "regions3d" in plane_to_solid.text
+
+
 def test_a_partially_overlapping_geometry_is_refused(client, solenoid_geometry):
     """The constraint the page's controls are shaped to respect.
 

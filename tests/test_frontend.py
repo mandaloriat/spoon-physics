@@ -49,32 +49,24 @@ def test_homepage_names_the_experiments_and_carries_the_disclaimer(client):
 
     assert "Spoon Physics" in body
     # Every experiment is reachable from the homepage; one that ships without a way in has not
-    # shipped. That includes the advanced lab, which is listed rather than carded.
+    # shipped. That includes the advanced lab, which is a footer link now (ADR-025).
     for name in EXPERIMENTS:
         assert f"/experiments/{name}/" in body
-    # Each card leads with the question its exercise answers, and says how long it takes.
-    # It no longer names the discipline as a bare topic line: "Aerodynamics · 5–8 min" tells a
-    # visitor both of the things they are actually choosing between.
+    # Each challenge cell leads with the question its exercise answers, and its meta row says
+    # the discipline and how long it takes.
     assert "How much tilt does a wing need?" in body
     assert "Which bar gives way first?" in body
     assert "Do more fins always cool better?" in body
-    # What is still planned is listed honestly rather than linked to nothing — and *if* nothing
-    # is planned, the badge is simply absent. What the page must never do is show a planned card
-    # that is also a link.
-    planned = re.findall(r'<li class="card card--planned">.*?</li>', body)
-    for card in planned:
-        assert "In preparation" in card
-        # No link at all, rather than no link to an experiment. A planned card pointing
-        # somewhere else is the same broken promise wearing a different href.
-        assert "<a" not in card
-        assert "href" not in card
-    # The tagline is the product's claim. ADR-016 fixed the old wording; ADR-022 replaced it,
-    # on the ground that the old one described the solver and this one describes what you do.
-    assert "Physics challenges. Real computation. Results worth arguing about." in body
+    # The hero is the claim now: the invitation, and a computed field beside it. The tagline
+    # ADR-016 fixed and ADR-022 replaced left with the redesign (ADR-025).
+    assert "Guess first." in body
+    assert "Then compute it." in body
+    # The disclaimer became the footer's caveat line, one sentence on every page.
     assert "not professional engineering tools" in body
     assert "fenix-spoon" in body
-    # Three steps, and the one sentence that justifies two credibility indicators per attempt.
-    assert "How to play" in body
+    # The loop strip: three words, and the one sentence that justifies two credibility
+    # indicators per attempt.
+    assert "Predict" in body and "Compute" in body and "Compare" in body
     assert "computed well and still describe reality badly" in body
 
 
@@ -88,8 +80,8 @@ def test_the_homepage_carries_no_formula_in_the_open_part_of_a_card(client):
     and §14.1.
     """
     body = client.get("/").text
-    cards = re.search(r'<ul class="card-grid">(.*?)</ul>', body, re.DOTALL)
-    assert cards, "the homepage has no card grid"
+    cards = re.search(r'<ul class="challenges">(.*?)</ul>', body, re.DOTALL)
+    assert cards, "the homepage has no challenge grid"
     text = re.sub(r"<[^>]+>", " ", cards.group(1))
 
     for symbol in ["η", "C_m", "mWb", "Wb/m", "±", "μᵣ", "L′", "T_max", "≤", "<"]:
@@ -101,16 +93,18 @@ def test_the_magnetic_circuit_is_not_presented_as_a_fourth_challenge(client):
 
     Deleting the page would throw away a working solver; leaving it in the grid would tell a
     visitor these four things are the same kind of thing, which is the claim ADR-022 rejects.
-    So it is on a shelf that says who it is for, and the page itself says so too.
+    ADR-025 moved its way in from the shelf to the footer: one link, on every page, that says
+    what kind of thing it is.
     """
     body = client.get("/").text
-    grid = re.search(r'<ul class="card-grid">(.*?)</ul>', body, re.DOTALL).group(1)
-    assert "/experiments/solenoid/" not in grid, "the magnetic circuit is back in the card grid"
-    assert len(re.findall(r'<li class="card', grid)) == len(CHALLENGES)
+    grid = re.search(r'<ul class="challenges">(.*?)</ul>', body, re.DOTALL).group(1)
+    assert "/experiments/solenoid/" not in grid, "the magnetic circuit is back in the grid"
+    assert len(re.findall(r'<a class="challenge"', grid)) == len(CHALLENGES)
 
-    shelf = re.search(r'<section class="shelf".*?</section>', body, re.DOTALL)
-    assert shelf, "the advanced shelf is missing, so the magnetic circuit has no way in"
-    assert "/experiments/solenoid/" in shelf.group(0)
+    footer = re.search(r'<div id="footer".*?</div>', body, re.DOTALL)
+    assert footer, "the footer fallback is missing, so the magnetic circuit has no way in"
+    assert "/experiments/solenoid/" in footer.group(0)
+    assert "Advanced lab" in footer.group(0)
 
     # And the page does not go on calling itself an exercise with a mission like the others.
     content = client.get("/experiments/solenoid/content.json").json()
@@ -185,16 +179,16 @@ def test_the_homepage_shows_a_real_field_for_every_experiment(client):
     """
     body = client.get("/").text
     sources = re.findall(r'src="(/assets/thumbnails/[^"]+)"', body)
-    assert len(sources) == len(CHALLENGES), "each challenge card needs its own field thumbnail"
-    for source in sources:
+    # One per challenge cell, plus the hero's instrument panel — which reuses the wing's
+    # field, so the *distinct* set is exactly the challenges'.
+    assert len(set(sources)) == len(CHALLENGES), "each challenge cell needs its own field"
+    for source in set(sources):
         response = client.get(source)
         assert response.status_code == 200, f"{source} is on the homepage but not served"
         assert response.content.startswith(b"\x89PNG"), f"{source} is not a PNG"
 
     # And a concrete invitation rather than "open the experiment".
-    assert "Try a wing" in body
-    assert "Build the bridge" in body
-    assert "Design the heat sink" in body
+    assert "Open the wing" in body
 
 
 def test_the_solenoid_page_renders_the_field_and_draws_its_own_cross_section(client):
@@ -226,6 +220,9 @@ def test_the_solenoid_page_renders_the_field_and_draws_its_own_cross_section(cli
         "/vendor/fenix-spoon/client/index.js",
         "/vendor/fenix-spoon/geometry-2d/index.js",
         "/vendor/fenix-spoon/viewer/index.js",
+        # Not the package index: `shared/curve.js` takes upstream's axis arithmetic and not
+        # its element, so this is the one module of `@fenix-spoon/plot` the site names.
+        "/vendor/fenix-spoon/plot/scale.js",
         "/shared/lab.css",
         "/shared/api.js",
         "/shared/components.js",
@@ -261,9 +258,16 @@ def test_static_assets_the_pages_reference_are_reachable(client, path):
 def test_the_import_map_matches_what_is_vendored(client, name):
     """Every experiment's import map targets must resolve, and they need not be the same set.
 
-    The airfoil resolves three packages, the solenoid two — it has no geometry to edit with
-    the editor widget. What must hold for both is that whatever the page declares is actually
-    served, because a bare specifier that resolves to a 404 is a page that does nothing.
+    The airfoil resolves four entries and the other three resolve three, and the difference is
+    `@fenix-spoon/geometry-2d`: the airfoil is the only page with an outline to drag, so it is
+    the only one that mounts `<fs-geometry-2d>`. What must hold for all of them is that whatever
+    the page declares is actually served, because a bare specifier that resolves to a 404 is a
+    page that does nothing.
+
+    One of the four is a *module* rather than a package: `@fenix-spoon/plot/scale.js`, because
+    `shared/curve.js` takes the scale arithmetic and deliberately not the element. Naming the
+    module rather than mapping the package prefix is what keeps that deliberate — a prefix
+    would quietly permit importing the element too (ADR-024).
     """
     body = client.get(f"/experiments/{name}/").text
     targets = re.findall(r'"(/vendor/fenix-spoon/[^"]+)"', body)
@@ -360,6 +364,13 @@ def test_every_challenge_is_stated_twice_in_two_registers(client, name, suffix):
         assert symbol not in challenge["plain_statement"], f"{name} leads with {symbol}"
 
 
+#: The pages already rebuilt to the instrument-first arrangement (ADR-025). On these the
+#: prediction is asked inline at the first Compute — above the action bar rather than above
+#: the bench — and the instrument grid is `.bench__main`. The others keep ADR-022's order
+#: until they migrate; a migrated page moves from one set to the other, deliberately.
+REDESIGNED = {"airfoil"}
+
+
 @pytest.mark.parametrize("name", EXPERIMENTS)
 def test_every_page_asks_before_it_answers(client, name):
     """The markup hooks the loop needs, in the order the loop happens.
@@ -367,8 +378,8 @@ def test_every_page_asks_before_it_answers(client, name):
     A page that lost one of these fails quietly: the prediction simply never renders, the
     verdict never appears, the credibility pair silently becomes a panel of residuals again.
     Each is asserted by position as well as by presence, because "present somewhere on the
-    page" is not the claim — the prediction has to come before the bench, and the explanation
-    after the results.
+    page" is not the claim — the prediction has to come before the solve it belongs to, and
+    the explanation after the results.
     """
     markup = re.sub(r"<!--.*?-->", "", client.get(f"/experiments/{name}/").text, flags=re.DOTALL)
 
@@ -376,9 +387,17 @@ def test_every_page_asks_before_it_answers(client, name):
                  'id="credibility"', 'id="explain"', 'id="teacher"']:
         assert hook in markup, f"the {name} page is missing {hook}"
 
-    assert markup.index('id="prediction"') < markup.index('class="bench__layout"'), (
-        "the prediction must come before the instrument, or it is not a prediction"
-    )
+    if name in REDESIGNED:
+        # The mission strip opens the page, and the prediction strip sits above the action
+        # bar that carries Compute: asked at the moment of the first solve, gating nothing.
+        assert markup.index('id="mission"') < markup.index('class="bench__main"')
+        assert markup.index('id="prediction"') < markup.index('class="actionbar"'), (
+            "the prediction must come before the actions it precedes, or it is not asked"
+        )
+    else:
+        assert markup.index('id="prediction"') < markup.index('class="bench__layout"'), (
+            "the prediction must come before the instrument, or it is not a prediction"
+        )
     assert markup.index('id="credibility"') < markup.index('id="verification"'), (
         "the two indicators come first; the residuals are the detail behind them"
     )
@@ -471,6 +490,36 @@ def test_the_italian_lesson_is_a_translation_and_not_a_copy(client, name):
         assert source["heading"] != translated["heading"], source["id"]
         for before, after in zip(source.get("body", []), translated.get("body", []), strict=True):
             assert before != after, f"{name}/{source['id']} is still in English"
+
+
+def test_the_image_vendors_the_same_widgets_the_script_does():
+    """The two places the widget set is named must name the same set.
+
+    `scripts/fetch-widgets.sh` builds and copies the packages for a `pip install -e .`
+    checkout; the Dockerfile's own `COPY --from=widgets` lines do it for the image. Neither
+    can be derived from the other — one is a shell loop, the other is a list of layers — so a
+    package added to one and not the other gives a container whose import map resolves to a
+    404 while the developer's machine is fine.
+
+    That is the ADR-007 failure with the pin swapped for a package, and it has the same
+    symptom: nothing happens, and nothing says why. `@fenix-spoon/plot` was the fourth entry
+    and the first one to be added since this pair existed, which is why this check exists now
+    rather than earlier.
+    """
+    root = Path(__file__).resolve().parent.parent
+    script = (root / "scripts" / "fetch-widgets.sh").read_text()
+    dockerfile = (root / "Dockerfile").read_text()
+
+    loop = re.search(r"for package in ([^;]+); do", script)
+    assert loop, "fetch-widgets.sh no longer loops over a package list"
+    from_script = set(loop.group(1).split())
+
+    from_image = set(
+        re.findall(r"COPY --from=widgets /src/client/packages/(\S+)/dist/", dockerfile)
+    )
+    assert from_script == from_image, (
+        f"the script vendors {sorted(from_script)} and the image vendors {sorted(from_image)}"
+    )
 
 
 def test_the_vendored_widgets_record_their_source_commit():
