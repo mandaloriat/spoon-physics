@@ -214,6 +214,88 @@ def test_the_two_heat_sink_adapters_refuse_each_other_s_geometry(
     assert "regions3d" in plane_to_solid.text
 
 
+def test_a_sensor_job_comes_back_with_the_calibration_beside_the_field(
+    client, sensor_geometry
+):
+    """The exercise's own shape, end to end: one job, one field, and the curve it was read off.
+
+    This is the first lab capability whose *answer* is a curve rather than a scalar, so the
+    part worth asserting at this level is that both halves survive the wire. `series` is not
+    in the default result level — a curve is bounded but it is still a numeric array — so a
+    caller asks for it by name, and a page that forgot to would get the metrics and no plot.
+    """
+    submitted = client.post(
+        "/api/v1/jobs",
+        json={
+            "solver": "lab.capacitor_axi2d",
+            "geometry": sensor_geometry,
+            "params": {"samples": 5, "cell_size": 5e-5, "truncation": 2.0, "resolution": 64},
+        },
+    )
+    assert submitted.status_code == 202, submitted.text
+    job_id = submitted.json()["job_id"]
+
+    with client.websocket_connect(f"/api/v1/jobs/{job_id}/events") as socket:
+        while True:
+            event = json.loads(socket.receive_text())
+            if event["type"] == "status" and event["status"] in {"done", "failed", "cancelled"}:
+                assert event["status"] == "done", event
+                break
+
+    body = client.get(f"/api/v1/jobs/{job_id}/result").json()
+    assert body["kind"] == "grid2d"
+    assert set(body["data"]["fields"]) == {"V", "E"}
+
+    metrics = body["metrics"]
+    assert metrics["capacitance"] > metrics["parallel_plate"], "the fringe field is the point"
+    assert metrics["dC_dz"] < 0.0
+    # Filled in by the server from the `field`/`max` declaration, not by the adapter — which
+    # is what makes that declaration a promise rather than a comment.
+    assert metrics["e_max"] > 0.0
+
+    curves = client.get(f"/api/v1/jobs/{job_id}/result?level=series").json()["series"]
+    named = {curve["name"]: curve for curve in curves}
+    assert set(named) == {"calibration", "tilt"}
+    assert named["tilt"]["x"]["unit"] == "deg", "the unit the published fit was made in"
+
+
+def test_the_same_outline_means_two_different_things_and_only_one_solver_takes_it(
+    client, sensor_geometry, solenoid_geometry
+):
+    """Why `axisymmetric2d` had to be a kind of its own rather than a convention.
+
+    The sensor's section *is* a legal `regions2d`: bounds starting at zero, one polygon inside
+    them. Sent to a plane solver it would be accepted and quietly answered as a slice per unit
+    depth — a wrong number with nothing on it to say so, since the two payloads differ only in
+    what the first coordinate means. The 422 is that failure made visible, and it runs both
+    ways because the reverse is the same mistake with the roles swapped.
+    """
+    as_a_slice = {**sensor_geometry, "type": "regions2d"}
+    to_a_plane_solver = client.post(
+        "/api/v1/jobs",
+        json={"solver": "lab.capacitor_axi2d", "geometry": as_a_slice, "params": {}},
+    )
+    assert to_a_plane_solver.status_code == 422, to_a_plane_solver.text
+    assert "axisymmetric2d" in to_a_plane_solver.text
+
+    to_the_sensor = client.post(
+        "/api/v1/jobs",
+        json={"solver": "lab.heatsink2d", "geometry": sensor_geometry, "params": {}},
+    )
+    assert to_the_sensor.status_code == 422, to_the_sensor.text
+    assert "regions2d" in to_the_sensor.text
+
+    # And the section really is legal as a plane one, or the first refusal above would be
+    # about the payload rather than about the kind.
+    plane = client.post(
+        "/api/v1/jobs",
+        json={"solver": "mock.magnetostatics2d", "geometry": as_a_slice,
+              "params": {"resolution": 32, "iterations": 20}},
+    )
+    assert plane.status_code == 202, plane.text
+    assert solenoid_geometry["type"] == "regions2d"
+
+
 def test_a_partially_overlapping_geometry_is_refused(client, solenoid_geometry):
     """The constraint the page's controls are shaped to respect.
 

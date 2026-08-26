@@ -288,3 +288,70 @@ def _published(gap: float) -> float:
     a, b, c = PUBLISHED_FIT
     z = gap * 1e3
     return 1e-9 / (a * z * z + b * z + c)
+
+
+# ──────────────────────────────────────────────────────── reading the sensor out of a section
+
+
+#: How far apart two coordinates may be and still be the same edge of the outline, in metres.
+#: A micron: the gap is ninety of them and the chamfer fifteen hundred, so nothing the section
+#: distinguishes falls inside it, and a payload authored in millimetres and rounded to six
+#: places still reads as the shape it was drawn as.
+SAME_EDGE = 1e-6
+
+
+def read_electrode(points: np.ndarray, floor: float) -> tuple[Electrode, float]:
+    """Recover the annulus and its gap from a meridian outline. Returns ``(electrode, gap)``.
+
+    The protocol's side of the exercise sends a *section*, not five numbers — a polygon in
+    (r, z) with a ``voltage`` on it — and this is where that polygon becomes the shape the
+    physics module is parameterised by. It is the same move
+    :mod:`~physics_lab.solvers.airfoil_geometry` makes for an arbitrary outline, and it is here
+    rather than in the adapter because it is arithmetic on points: no protocol, no envelope.
+
+    **What it will not guess at.** This solver knows one shape — a chamfered annulus, the two
+    chamfers alike — and a section that is not one is *refused* rather than approximated to the
+    nearest one it does know. An outline half of whose corners were cut would come back as a
+    symmetric chamfer with no complaint otherwise, and the capacitance would be wrong by
+    whatever the difference was worth.
+
+    ``floor`` is where the facing plate is: the bottom of the modelled window, which is the
+    shell's coating. The gap is what separates them.
+    """
+    radii, heights = points[:, 0], points[:, 1]
+    inner, outer = float(radii.min()), float(radii.max())
+    bottom, top = float(heights.min()), float(heights.max())
+    gap = bottom - floor
+    if gap <= 0.0:
+        raise ValueError(
+            f"the electrode sits at z = {bottom * 1e6:.1f} µm and the window's floor — the "
+            f"shell's coating — is at {floor * 1e6:.1f} µm, so the gap is not positive. The "
+            "two plates of this capacitor are the electrode's lower face and the bottom of "
+            "the section; a section that starts at or above the metal has no gap to solve"
+        )
+
+    on_top = radii[np.abs(heights - top) <= SAME_EDGE]
+    on_outside = heights[np.abs(radii - outer) <= SAME_EDGE]
+    if on_top.size == 0 or on_outside.size == 0:
+        raise ValueError("the outline has no top face and no outer face; this is not an annulus")
+
+    inboard = float(on_top.min()) - inner
+    outboard = outer - float(on_top.max())
+    if abs(inboard - outboard) > SAME_EDGE:
+        raise ValueError(
+            f"the two chamfers differ — {inboard * 1e3:.3f} mm inboard against "
+            f"{outboard * 1e3:.3f} mm outboard. This solver models the annulus of "
+            "`docs/exercises/capacitive-sensor.md`, whose chamfers are alike, and an outline "
+            "it does not recognise is refused rather than averaged into one it does"
+        )
+
+    return (
+        Electrode(
+            inner_radius=inner,
+            outer_radius=outer,
+            thickness=top - bottom,
+            chamfer_width=max(inboard, 0.0),
+            chamfer_height=max(top - float(on_outside.max()), 0.0),
+        ),
+        gap,
+    )

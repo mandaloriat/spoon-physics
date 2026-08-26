@@ -102,6 +102,7 @@ asks for.
 
 from . import (  # noqa: F401  - importing registers them
     airfoil_panel2d,
+    capacitor_axi2d,
     heatsink2d,
     heatsink3d,
     magnetics2d,
@@ -110,6 +111,7 @@ from . import (  # noqa: F401  - importing registers them
 
 __all__: list[str] = [
     "airfoil_panel2d",
+    "capacitor_axi2d",
     "heatsink2d",
     "heatsink3d",
     "magnetics2d",
