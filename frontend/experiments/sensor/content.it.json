@@ -1,0 +1,180 @@
+{
+  "id": "sensor",
+  "title": "Quanto bene un condensatore riesce a misurare un traferro?",
+  "subtitle": "Sensibilità, la corsa su cui resta lineare, e l'inclinazione che mente",
+  "intro": "Un elettrodo anulare guarda uno specchio a novanta micrometri di distanza. La capacità fra i due dice quanto è lontano lo specchio — ma una capacità è un numero, e un sensore ha bisogno di una curva. Si spazza il traferro, si adatta la curva, e si legge quello che un controllore riceverebbe davvero.",
+  "challenge": {
+    "statement": "Caratterizza il sensore capacitivo anulare al suo traferro nominale di 90 µm: riporta la sensibilità dC/dz, la semicorsa su cui una taratura lineare resta entro l'1 %, e la sensibilità incrociata all'inclinazione. Sensibilità almeno 0,30 nF/mm in modulo, lineare su almeno ±10 µm, ed eccesso di frangia sotto 0,25 — un sensore la cui capacità è per lo più frangia è un sensore la cui lettura dipende da tutto tranne che dal traferro. Le esecuzioni che escono dal dominio di validità del modello non contano.",
+    "plain_statement": "Fai in modo che il sensore legga almeno 0,30 nF per ogni millimetro di spostamento dello specchio, e che quella lettura resti dritta su almeno ±10 µm. La sua capacità può superare al massimo del 25 % quella che darebbe una piastra piana della stessa area.",
+    "targets": [
+      {
+        "metric": "dC_dz",
+        "comparator": ">",
+        "value": 3e-7,
+        "unit": "F/m",
+        "absolute": true
+      },
+      {
+        "metric": "linear_halfstroke",
+        "comparator": ">",
+        "value": 1e-5,
+        "unit": "m"
+      },
+      {
+        "metric": "fringe_excess",
+        "comparator": "<",
+        "value": 0.25,
+        "unit": "1"
+      }
+    ],
+    "requires_valid": true,
+    "requires_verified": {
+      "metric": "energy_charge_consistency_rel",
+      "below": 0.01
+    },
+    "next_step": "la stessa corsa da uno svaso diverso, allo stesso traferro"
+  },
+  "prediction": {
+    "question": "Le due piastre sono inclinate di un decimo di grado — circa lo spessore di un capello lungo l'elettrodo. Che cosa riporta il sensore?",
+    "options": [
+      {
+        "id": "nothing",
+        "label": "Quasi nulla: un'inclinazione non è uno spostamento"
+      },
+      {
+        "id": "closer",
+        "label": "Che lo specchio si è avvicinato"
+      },
+      {
+        "id": "further",
+        "label": "Che lo specchio si è allontanato"
+      },
+      {
+        "id": "noise",
+        "label": "Una lettura che salta qua e là"
+      }
+    ],
+    "allow_unknown": true
+  },
+  "explain": [
+    {
+      "id": "curvature",
+      "heading": "Un'inclinazione si legge sempre come un avvicinamento",
+      "body": [
+        "Un lato dell'elettrodo si avvicina e l'altro si allontana della stessa quantità. Se la capacità fosse una retta nel traferro, i due effetti si cancellerebbero esattamente.",
+        "Non è una retta — è all'incirca uno su il traferro, che si incurva verso l'alto man mano che il traferro si chiude. Il lato che si chiude guadagna più di quanto l'altro perda, così la media **sale**, e salire significa avvicinarsi.",
+        "Questa esecuzione riporta {tiltError} µm di movimento che lo specchio non ha mai fatto."
+      ]
+    },
+    {
+      "id": "trade",
+      "heading": "Sensibilità e corsa sono la stessa leva, tirata al contrario",
+      "body": [
+        "La curvatura che fa mentire l'inclinazione è la stessa che fa sbagliare una taratura lineare su una corsa lunga. Chiudere il traferro rende la curva più ripida — più sensibilità — e la piega di più — meno corsa utilizzabile.",
+        "Questo tentativo legge {sensitivity} nF/mm e resta lineare su ±{stroke} µm a un traferro di {gap} µm. Aprire il traferro compra corsa e vende sensibilità; nulla compra entrambe."
+      ]
+    },
+    {
+      "id": "fringe",
+      "heading": "Un sesto di questa capacità non sta fra le piastre",
+      "body": [
+        "La formula della piastra piana ε₀A/d conta solo il campo che attraversa il traferro dritto. Il campo vero sborda oltre il bordo, e qui quello sbordamento vale circa un sesto — ed è il motivo per cui questo si risolve invece di valutarlo.",
+        "Ed è anche il motivo per cui lo svaso conta: tagliare gli spigoli dalla parte opposta al traferro sposta la risposta di qualche punto percentuale senza toccare per nulla l'area affacciata."
+      ]
+    }
+  ],
+  "teacher": {
+    "objective": "Capire perché un sensore si caratterizza con una curva e non con un numero, e incontrare una sensibilità incrociata che è del secondo ordine e comunque abbastanza grande da contare.",
+    "prediction": "Un'inclinazione di un decimo di grado — che cosa riporta il sensore?",
+    "misconception": "Un'inclinazione si media a zero, perché un lato si avvicina quanto l'altro si allontana.",
+    "discussion": "Il sensore non sa distinguere un'inclinazione da una traslazione. Che cosa aggiungereste alla macchina — non al modello — per distinguerle?",
+    "prerequisites": "La capacità di una piastra piana, e la lettura di una pendenza su un grafico.",
+    "duration": "25–35 minuti, con la taratura e una riprogettazione."
+  },
+  "sections": [
+    {
+      "id": "problem",
+      "heading": "Il problema",
+      "lead": "Uno specchio da telescopio galleggia sul nulla, e qualcosa deve dire dov'è.",
+      "body": [
+        "Uno specchio deformabile per un grande telescopio è un guscio sottile sospeso sopra un corpo di riferimento rigido, tenuto in posizione solo dalle proprie forze di controllo. Ogni unità di controllo è un attuatore a bobina mobile con attorno un elettrodo anulare. L'elettrodo è una piastra di un condensatore; una doratura sul retro dello specchio è l'altra. Il traferro fra i due è di circa 90 micrometri, e l'anello di controllo che mantiene la forma dello specchio vive su quello che quel condensatore riporta.",
+        "Attuatore e sensore sono quindi nello stesso posto per costruzione, che è esattamente ciò che vuole un controllore decentralizzato. Quello che non ottiene gratis è una *taratura*: quanti farad per micron, su che intervallo quel numero si può trattare come costante, e a che altro risponde la lettura."
+      ]
+    },
+    {
+      "id": "curve",
+      "heading": "Perché una sola soluzione non è una risposta",
+      "lead": "I tre numeri di questa pagina sono proprietà di una curva, non di un campo.",
+      "body": [
+        "Risolvi la sezione una volta e ottieni una capacità. Il controllore non se ne può fare nulla. Quello con cui inverte una lettura è la **pendenza** dC/dz; quello che limita fin dove può invertire prima che la retta sbagli è la **semicorsa lineare**; e quello che gli dice quanto uno specchio inclinato lo ingannerà è una **quadratura sulla stessa curva**.",
+        "Perciò una pressione di *Calibra* è una spazzata di traferri con un fit sopra. Il fit è la quadratica reciproca in cui la misura pubblicata è stata ridotta — 1/C come quadratica nel traferro — e non è un capriccio: una piastra piana è esattamente 1/z, e il campo di frangia la piega. Adattare nella stessa famiglia è ciò che rende il confronto un confronto fra simili, e rende ogni derivata analitica invece che una differenza di soluzioni rumorose."
+      ]
+    },
+    {
+      "id": "model",
+      "heading": "Il modello",
+      "lead": "Elettrostatica su una semisezione meridiana di un solido di rivoluzione.",
+      "body": [
+        "∇·(ε∇V) = 0, senza carica libera e con dielettrico lineare. La sezione è una semisezione (r, z): l'asse orizzontale dell'immagine è un **raggio**, e l'anello intero è quell'immagine ruotata di 360°. L'unica differenza rispetto ai solutori piani che questo laboratorio già usa è un fattore r — in ogni area di faccia e nell'elemento di volume — ed è la differenza fra un solido di rivoluzione e una fetta.",
+        "Poiché l'elemento di volume è quello ruotato, la capacità torna in farad per tutto l'anello e non per metro di profondità. Si legge dall'energia immagazzinata, C = 2W/V², e di nuovo dalla carica integrata sulla superficie dell'elettrodo; le due coincidono per una soluzione convergente, ed è questo che rende la loro differenza una verifica."
+      ]
+    },
+    {
+      "id": "conductor",
+      "heading": "Dove sta il metallo",
+      "lead": "L'elettrodo non è nel dominio risolto, e non è un raffinamento.",
+      "body": [
+        "Un metodo a centri di cella che fissa le *celle* dell'elettrodo mette la superficie del conduttore mezza cella dentro il metallo. Nella maggior parte dei problemi è un errore che sparisce raffinando la griglia. Non qui: l'elettrodo è spesso 4 mm, non porta campo, ed è quindi diviso grossolanamente — mentre il traferro da cui dipende tutta la risposta è di 90 µm.",
+        "Il primo tentativo del laboratorio faceva esattamente questo e restituiva una capacità **quattro volte più piccola**, con un sistema lineare consistente, le due vie alla capacità d'accordo su cinque cifre, e un residuo alla precisione di macchina. Un numero sbagliato, non un errore. A coglierlo è stato il confronto qui sotto. Qui il metallo è escluso dal dominio e ogni faccia che lo tocca porta il potenziale dell'elettrodo, così la superficie del conduttore sta dove dice la geometria."
+      ]
+    },
+    {
+      "id": "tilt",
+      "heading": "L'inclinazione è dedotta, non risolta",
+      "lead": "Un'inclinazione non è assialsimmetrica, quindi non ha una sezione meridiana.",
+      "body": [
+        "È questa la difficoltà, e non è una di quelle che una griglia più fine risolve. Lo studio originale provò una soluzione tridimensionale completa dell'unità inclinata e la abbandonò: a 90 µm di traferro la geometria non si può perturbare abbastanza perché la variazione di capacità si distingua dall'errore di discretizzazione.",
+        "Ha funzionato invece quello che fa questa pagina. A ogni azimut il traferro locale è z₀ + γR·cos θ, il contributo lì è la risposta assialsimmetrica a *quel* traferro, e il sensore vede la loro media lungo l'anello. Non costa altre soluzioni, perché è una quadratura sulla curva già calcolata — ed è buona solo quanto quella curva è larga, motivo per cui la spazzata copre l'escursione al bordo dovuta all'inclinazione e non soltanto la corsa di lavoro."
+      ]
+    },
+    {
+      "id": "units",
+      "heading": "Un decimo di grado, o un decimo di radiante?",
+      "lead": "La fonte non lo dice, e la risposta cambia tutto di un fattore 3283.",
+      "body": [
+        "La misura con cui questa pagina si confronta riporta due fit: la capacità contro il traferro, e C(γ) = 0,09γ² + 0,0319 nF contro l'inclinazione. Il secondo non dichiara mai la sua unità.",
+        "Si può risolvere senza chiedere a nessuno. Il coefficiente di inclinazione implicato dalla *prima* curva attraverso il metodo qui sopra è 297 nF/rad², cioè 0,0905 nF/grado² — mezzo punto percentuale dallo 0,09 stampato. La lettura in radianti sbaglierebbe di un fattore tremila. Quindi il coefficiente stampato è per grado quadrato, il controllo di questa pagina è in gradi, e la metrica è riportata in entrambe le unità perché nessuno debba crederci sulla parola."
+      ]
+    },
+    {
+      "id": "conditions",
+      "heading": "Che cosa è fisso, e che cosa è tuo",
+      "lead": "La forma è tua; il servizio è quello che lo specchio le chiede.",
+      "body": [
+        "Le quattro lunghezze dell'elettrodo e il traferro nominale sono controlli. L'eccitazione è di un volt e potrebbe essere qualunque cosa — la capacità non ne dipende, e scala solo l'energia immagazzinata.",
+        "La corsa di lavoro è ±50 µm, che è l'escursione dell'attuatore, e l'inclinazione è quotata a un decimo di grado, che è circa 1,7 milliradianti e l'ordine di grandezza che l'unità reale vede. Entrambe sono servizio e non forma: stabiliscono su che cosa la taratura è misurata, non che cosa il sensore è."
+      ]
+    },
+    {
+      "id": "verification",
+      "heading": "Come si sa che i numeri tengono",
+      "lead": "Quattro verifiche, e una non è una verifica di coerenza interna.",
+      "body": [
+        "**Il confronto con la misura è quella insolita.** La risposta con cui questa esecuzione si confronta è stata calcolata nel 2015, da un altro codice su un'altra formulazione, ed è pubblicata. Questo la rende un controllo esterno vero e non il modello che si dà ragione da solo — ed è la verifica che ha colto l'errore sulla superficie del conduttore descritto sopra.",
+        "Le altre tre sono interne e vale comunque la pena leggerle. Le due vie alla capacità — energia immagazzinata e carica integrata — sono lo stesso numero per una soluzione discreta convergente, quindi la loro differenza misura la soluzione lineare. Il residuo del fit dice se questa geometria appartiene affatto alla famiglia della misura pubblicata, il che conta perché ogni derivata della pagina è presa dal fit. E lo studio di griglia, quando è acceso, dimezza la cella e raddoppia il troncamento per dire quanto valeva la risoluzione.",
+        "Un'aspettativa da fissare: man mano che allontani il progetto dal sensore misurato, il confronto *deve* peggiorare. Uno svaso diverso è un sensore diverso, e una verifica che restasse verde a ogni riprogettazione non starebbe verificando nulla."
+      ]
+    },
+    {
+      "id": "limits",
+      "heading": "Che cosa questo modello non può dirti",
+      "lead": "È una taratura, non un sensore.",
+      "body": [
+        "In questo modello non c'è tempo. Un'unità reale è letta da una portante a decine di kilohertz, e ciò che ne fissa la *risoluzione* — rumore, demodulazione, il fattore di perdita di quello che sta nel traferro — è elettronica di cui questa pagina non dice nulla. Qui c'è la curva che quell'elettronica riceverebbe.",
+        "Entrambe le piastre sono supposte piane. Il guscio dello specchio si flette localmente sotto l'attuatore che condivide l'impronta di questa unità, e lo studio originale indica quella curvatura come l'effetto di ordine successivo che non ha analizzato. Una piastra curva non è un traferro, e nessun controllo qui la approssima.",
+        "E c'è un solo sensore. Il corpo di riferimento vero ne porta centinaia; una sezione assialsimmetrica non ne può contenere due, quindi nulla qui descrive la diafonia fra vicini. Va bene finché il traferro è molto più piccolo del passo, come qui di due ordini di grandezza — e vale la pena ricordarlo come ipotesi e non come dato di fatto."
+      ],
+      "caution": true
+    }
+  ]
+}

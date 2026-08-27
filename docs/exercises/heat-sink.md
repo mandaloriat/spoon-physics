@@ -330,11 +330,12 @@ thing to have learned than either curve alone, and it is what the three overlaid
 
 ## 11. What this needs that does not exist yet
 
-**Still nothing that has to be waited for**, which is why this remains the right exercise to
-build while [#100](https://github.com/mandaloriat/fenix-spoon/issues/100) and
-[#101](https://github.com/mandaloriat/fenix-spoon/issues/101) sit upstream. But §2.2 changed
-what has to be *written*, and the change is worth stating plainly rather than leaving as a
-surprise for whoever builds it.
+**Nothing that has to be waited for** — which is why this was the right exercise to build while
+[#100](https://github.com/mandaloriat/fenix-spoon/issues/100) and
+[#101](https://github.com/mandaloriat/fenix-spoon/issues/101) sat upstream. Both are closed now
+and this page is built, so that sentence has done its job; it is kept because the reasoning is
+the reusable part. But §2.2 changed what has to be *written*, and the change is worth stating
+plainly rather than leaving as a surprise for whoever builds it.
 
 1. **Radiation means the lab writes a solver after all — `lab.heatsink2d`.** An earlier draft of
    this specification called the heat sink the first exercise needing no solver of its own.

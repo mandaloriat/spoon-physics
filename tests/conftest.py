@@ -130,3 +130,44 @@ def heatsink3d_geometry():
             }
         ],
     }
+
+
+@pytest.fixture
+def sensor_geometry():
+    """A valid ``axisymmetric2d`` payload: one annular electrode over the shell's coating.
+
+    The horizontal coordinate is a **radius**, and this section does not reach the axis —
+    which is the case upstream's geometry docstring names as the one an adapter must not
+    assume away, and it is this sensor that named it. The centreline is 11 mm inboard of
+    anything modelled here.
+
+    Deliberately smaller than the page's own envelope, and deliberately a plain chamfered
+    hexagon: what it shares with the page is the *shape of the payload* — the electrode as a
+    region carrying a `voltage`, the facing plate as the floor of the window — which is the
+    only part a test at this level is about.
+    """
+    inner, outer, thickness = 0.011, 0.0145, 0.004
+    chamfer, gap = 0.0015, 90e-6
+    top = gap + thickness
+    return {
+        "type": "axisymmetric2d",
+        "bounds": [0.0, 0.0, 0.030, 0.010],
+        "background": {"eps_r": 1.0},
+        "regions": [
+            {
+                "name": "electrode",
+                "shape": {
+                    "type": "polygon2d",
+                    "points": [
+                        [inner, gap],
+                        [outer, gap],
+                        [outer, top - chamfer],
+                        [outer - chamfer, top],
+                        [inner + chamfer, top],
+                        [inner, top - chamfer],
+                    ],
+                },
+                "material": {"voltage": 1.0},
+            }
+        ],
+    }
