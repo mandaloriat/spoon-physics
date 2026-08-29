@@ -156,22 +156,25 @@ twice in `P45`. It is not where the risk is, and it is not what this proposal is
 
 ## 6. What is being asked for
 
-1. ~~**Open an issue upstream for the modal solve**~~ — **done**:
-   [fenix-spoon#101](https://github.com/mandaloriat/fenix-spoon/issues/101), on the pattern of
-   [#100](https://github.com/mandaloriat/fenix-spoon/issues/100). It carries the room-modes row
-   and the mirror as the two consumers, the `series.py` table and the `static` assumption as the
-   evidence that the toolkit has already half-agreed, and it keeps the plate element explicitly
-   out of scope. It also names the two things that bite in the solve itself: a *generalised*
-   eigenproblem, and free-free structures — the mirror's singular **K** and its three zero modes
-   are a correctness check, not a nuisance to be filtered away.
+1. ~~**Open an issue upstream for the modal solve**~~ — **done, and answered**:
+   [fenix-spoon#101](https://github.com/mandaloriat/fenix-spoon/issues/101) was opened on the
+   pattern of [#100](https://github.com/mandaloriat/fenix-spoon/issues/100), and both are now
+   closed and shipped — the eigensolve in protocol 1.14 as `mock.modal2d` and its FEniCSx twin,
+   the axisymmetric kind in 1.13. The lab has been running both since its pin moved to 1.17.
+   The issue carried the room-modes row and the mirror as the two consumers, the `series.py`
+   table and the `static` assumption as the evidence that the toolkit had already half-agreed,
+   and it kept the plate element explicitly out of scope. **That separation is what this
+   document was for, and it held**: ask A went upstream and came back, ask B is still the
+   lab's.
 2. **Approve the plate spike in the lab** — the element and the eigen-check against the fifty
    frequencies, and nothing downstream of them.
 3. **Defer the ownership question on the element** until the spike passes, then offer it
    upstream with its benchmark.
 
-**If the answer upstream is no on the modal solve**, the lab computes its own frequencies inside
-`lab.mirror_plate2d` and returns them as `series1d`, which works and is protocol-legal. The cost
-of that outcome should be named now rather than discovered later: it would be the **second**
-local workaround on the P45 thread, after the axisymmetric convention #100 already accepts one
+~~**If the answer upstream is no on the modal solve**~~ — it was yes, so this contingency lapsed
+unspent. It is kept below because the cost it named is the reason the ask was made upstream at
+all rather than worked around locally, and the next ask of this kind will want the argument:
+the fallback would have been the **second** local workaround on the P45 thread, after the
+axisymmetric convention #100 already accepts one
 of. §11 of the sensor exercise authorises that kind of thing *once and explicitly not twice*,
 and two of them is the point at which the lab has quietly forked the toolkit's job.

@@ -81,7 +81,7 @@ export function renderChallenge(container, challenge, report, labels = {}) {
 
   const rows = (challenge.targets ?? []).map((target) => {
     const value = report?.metrics?.[target.metric];
-    const state = judge(target, value, report);
+    const state = judge(target, value, report, labels[target.metric]);
     return el(
       'li',
       { class: `challenge__target is-${state.state}`, title: describeTarget(target, labels) },
@@ -361,7 +361,12 @@ function describeTarget(target, labels = {}) {
   return `${name} ${target.comparator} ${target.value}${unit}`;
 }
 
-function judge(target, value, report) {
+/**
+ * @param {object} [label] the metric's entry in the page's label table, when it has one. Used
+ *   for the *reading* only, and only to say it in the unit the goal beside it is written in —
+ *   see {@link displayed}.
+ */
+function judge(target, value, report, label) {
   if (!report) return { state: 'pending', mark: '·', detail: t('exercise.notRunYet') };
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return { state: 'pending', mark: '·', detail: t('exercise.notReported') };
@@ -374,8 +379,38 @@ function judge(target, value, report) {
   return {
     state: met ? 'met' : 'missed',
     mark: met ? '✓' : '✕',
-    detail: t('exercise.reading', { value: round(target.absolute ? Math.abs(value) : value) }),
+    detail: t('exercise.reading', { value: displayed(target, value, report, label) }),
   };
+}
+
+/**
+ * The reading, in the unit the goal beside it is stated in.
+ *
+ * **The comparison stays SI and only the display moves.** A target is evaluated against the
+ * metric exactly as the solver reported it — that is what keeps `content.json` checkable
+ * against a capability's declarations — but a goal reading *0.30 nF/mm at least* beside a
+ * reading of `3.17e-7` is two numbers a visitor cannot put together.
+ *
+ * So where the page's label table gives the metric a `from` — the same converter its results
+ * table and its headline tile already use — the reading borrows it, along with its `plainUnit`
+ * and its `digits`. It is also formatted with {@link num} rather than `round`, so the decimal
+ * separator is the reader's: the tile above this line already said `0,317` in Italian, and a
+ * reading beside it saying `0.317` reads as a second, differently-computed number.
+ *
+ * Where there is no converter this is exactly what it was before — the raw value, rounded, in
+ * whatever `round` makes of it. Three of the four exercises here report in units a person
+ * already reads, and nothing about them changes.
+ */
+function displayed(target, value, report, label) {
+  const signed = target.absolute ? Math.abs(value) : value;
+  if (typeof label?.from !== 'function') return round(signed);
+  const converted = label.from(report);
+  if (typeof converted !== 'number' || !Number.isFinite(converted)) return round(signed);
+  const shown = num(target.absolute ? Math.abs(converted) : converted, {
+    maximumFractionDigits: label.digits ?? 3,
+  });
+  const unit = label.plainUnit ?? (label.unit && label.unit !== '1' ? label.unit : '');
+  return unit ? `${shown} ${unit}` : shown;
 }
 
 /**

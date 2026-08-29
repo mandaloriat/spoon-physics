@@ -1,10 +1,11 @@
 """Lab-specific solver adapters.
 
-Five adapters live here: the airfoil exercise's panel method, the magnetics exercise's
+Six adapters live here: the airfoil exercise's panel method, the magnetics exercise's
 finite-volume magnetostatics, the bridge exercise's direct stiffness method for a pin-jointed
-truss, and the heat-sink exercise twice — once on the cross-section and once on the solid body,
-which is two capabilities rather than a switch because the *geometry kind* differs and that is
-what lets each refuse the other's payload (ADR-023). Each is registered by importing it, and
+truss, the capacitive sensor's swept axisymmetric electrostatics, and the heat-sink exercise
+twice — once on the cross-section and once on the solid body, which is two capabilities rather
+than a switch because the *geometry kind* differs and that is what lets each refuse the other's
+payload (ADR-023). Each is registered by importing it, and
 importing this package is
 wired into ``physics_lab.main`` before the app is created, so they appear in
 ``GET /api/v1/solvers``, in the capability catalogue and in the front-end's solver picker with
@@ -15,7 +16,8 @@ Why a solver of the lab's own, when the point of the first release was to write 
 -------------------------------------------------------------------------------------
 
 Because each exercise needs physics Fenix Spoon does not have, and in every case it is the
-*metric* that needs it rather than the picture:
+*metric* that needs it rather than the picture — with one exception, which is the last entry
+below and has a record of its own:
 
 * Upstream's potential-flow adapters impose no Kutta condition, so their circulation is zero
   and their integrated lift is exactly zero at every incidence — fine for showing how a body
@@ -39,6 +41,17 @@ Because each exercise needs physics Fenix Spoon does not have, and in every case
   physics upstream does not have and does not claim to. That is true of the solid body as well
   as the section, so the third dimension inherited the same reason rather than needing a new
   one. See ADR-023.
+* The capacitive sensor is the exception, and the only one so far. Upstream ships
+  ``mock.electrostatics_axi2d`` and ``dolfinx.electrostatics_axi2d`` on the very geometry kind
+  this exercise uses, and both solve the right equation — so by the rule above the lab should
+  use them. What the exercise's metrics need is not physics but **that there are several solves
+  and that they are related to each other**: a sensitivity is the slope of a curve, a linear
+  stroke is how far a line stays inside a tolerance of that curve, and a tilt coefficient is a
+  quadrature over it. None is a reduction of a field, so none can be declared against a single
+  solve. The sweep is the exercise, and the adapter that sweeps has to own the solve. See
+  ADR-026 — which also records what happened when the upstream mock was tried as the
+  cross-check instead: on a 90 µm gap in a 10 mm window its capacitance is half the measured
+  one and is not monotone in resolution.
 
 Every adapter is split the same way, so that only the last file in each list knows about the
 protocol — which is what lets the physics be tested against a closed form, without a job, a
@@ -68,6 +81,13 @@ server or an envelope:
   so is the extruded limit: with the device covering the whole length and the ends shut it
   reproduces ``heatsink.solve`` to the solver tolerance.
 * ``heatsink3d.py`` — the ``Solver`` adapter for ``regions3d``, and nothing else.
+
+* ``capacitor.py`` — axisymmetric electrostatics on an interface-fitted graded grid, with the
+  conductor carried on the faces rather than in the cells. Arrays only.
+* ``sensor.py`` — the exercise: the gap sweep, the fit in the published family, the seven
+  metrics read off it, the tilt inferred by quadrature, and the residuals. Also the reader that
+  recovers the annulus from a meridian outline, because that is arithmetic on points.
+* ``capacitor_axi2d.py`` — the ``Solver`` adapter for ``axisymmetric2d``, and nothing else.
 
 Adding another
 --------------
@@ -102,6 +122,7 @@ asks for.
 
 from . import (  # noqa: F401  - importing registers them
     airfoil_panel2d,
+    capacitor_axi2d,
     heatsink2d,
     heatsink3d,
     magnetics2d,
@@ -110,6 +131,7 @@ from . import (  # noqa: F401  - importing registers them
 
 __all__: list[str] = [
     "airfoil_panel2d",
+    "capacitor_axi2d",
     "heatsink2d",
     "heatsink3d",
     "magnetics2d",

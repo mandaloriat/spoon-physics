@@ -325,6 +325,12 @@ export default {
       question: 'Do more fins always cool better?',
       mission: '30 W under 95 °C, on 170 g of aluminium.',
     },
+    sensor: {
+      domain: '04 / Metrology',
+      time: '8–12 min',
+      question: 'Can a capacitor tell you where a mirror is?',
+      mission: 'A third of a nanofarad per millimetre, straight over twenty microns.',
+    },
     /* The advanced lab: a footer link now, not a shelf. The name is also the link's text. */
     solenoid: {
       name: 'Magnetic field in a 2D section',
@@ -341,6 +347,8 @@ export default {
     methodTruss: '<strong>Bridge</strong> — one bar element per bar, solved once.',
     methodHeatsink:
       '<strong>Heat sink</strong> — conduction through the metal, with convection and radiation at the surfaces.',
+    methodSensor:
+      '<strong>Gap sensor</strong> — electrostatics on a section through a body of revolution, solved at a series of gaps.',
     methodSolenoid: '<strong>Magnetostatics</strong> — the field in a two-dimensional section.',
     capabilityChecking: 'Checking what is installed on this server…',
     capabilityBoth: 'This server has both the fast computation and the finite-element one.',
@@ -1127,6 +1135,11 @@ export default {
     model: {
       section: 'The cross-section',
       solid: 'The whole body',
+      attemptSection:
+        'Read on the cross-section, which takes the device to warm the base evenly along the whole length.',
+      attemptSolid:
+        'Read on the whole body. The cross-section would have put the resistance at {extruded} K/W against {solid} — the same sink, one assumption fewer.',
+      attemptSolidAlone: 'Read on the whole body, with no cross-section run to set it against.',
       sectionNote:
         'The device is taken to heat the base evenly along the whole length. Exact for the conduction, and the assumption a real device breaks.',
       solidNote:
@@ -1261,5 +1274,200 @@ export default {
       radiative: 'radiative share',
       best: 'best',
     },
+  },
+  sensor: {
+    title: 'Capacitive gap sensor — Spoon Physics',
+    description:
+      'A capacitive displacement sensor as a design exercise: calibrate an annular electrode over a 90 µm gap, trade sensitivity against linear stroke, and see what a tenth of a degree of tilt reports as motion. Checked against a measurement published in 2015.',
+    missionHeading: 'Calibrate the gap sensor.',
+    missionConstraint: '|dC/dz| > 0.30 nF/mm · linear over ±10 µm · fringe < 0.25',
+    whyTarget: 'Why this target?',
+    /* The button says what the press does, and one press is a sweep rather than a solve. */
+    run: 'Calibrate',
+    reset: 'Reset sensor',
+    ready: 'Ready. Press Calibrate: one press sweeps the gap and fits the curve, a few seconds.',
+    readingHint: 'Read off the fitted curve, on every attempt.',
+    more: 'Electrode, duty and numerics',
+    electrodeHeading: 'The electrode',
+    dutyHeading: 'What it is asked to do',
+    dutyLead:
+      'Not the shape — the duty. These set what the calibration is measured over, and the tilt is in degrees because that is the unit the published fit used.',
+    designNote:
+      'The gap is the strongest lever and it pulls both ways: closing it steepens the curve and bends it.',
+    calibrationCurve: 'The calibration curve',
+    calibration: 'Capacitance against gap',
+    tiltHeading: 'And against tilt',
+    fitSection: 'Fit the electrode',
+    maintenanceAlternative: 'the calibration curve and the checks from your kept attempts',
+    noSolver: 'No sensor solver on this server.',
+    noSolverHere:
+      'This server has no capacitive-sensor solver installed, so the page can show its explanation but cannot compute. Everything below the bench still reads.',
+    stageAria:
+      'Computed field on a meridian section. The horizontal axis is a radius. Drag to pan, plus and minus to zoom.',
+    sectionNote:
+      'A meridian half-section of a body of revolution. The horizontal axis is the radius r measured from the sensor’s centreline; the whole annulus is this picture turned through 360°.',
+    noResolution:
+      'No noise figure and no resolution: this model is electrostatic, and what limits a real sensor’s resolution is the read-out electronics at its carrier frequency. What is here is the calibration those electronics would be given.',
+    tiltNote:
+      'This curve is inferred, not solved. A tilt has no meridian section, so each azimuth is treated as locally axisymmetric with its own gap and the ring is integrated over the curve above — the method the thesis used after a full 3-D attempt failed to resolve the change at this gap. It costs no extra computation, and it is only as good as the curve above is wide.',
+    shapeLabel: '{inner}–{outer} mm at {gap} µm, {chamfer} mm chamfer',
+
+    /* The targets as a student reads them. §2.4: meaning first, the symbol in the tooltip. */
+    goal: {
+      sensitivity: 'Sensitivity: 0.30 nF/mm at least',
+      halfstroke: 'Straight over: ±10 µm at least',
+      fringe: 'Fringe excess: 0.25 at most',
+      published: 'Measured in 2015: 0.0319 nF',
+      tilt: 'Measured in 2015: 0.09 nF/deg²',
+    },
+
+    headline: {
+      sensitivity: 'Sensitivity',
+      sensitivityHint:
+        'How much the capacitance moves per millimetre of gap, at the nominal gap. The number a controller inverts a reading with — and it is negative, because closing the gap raises the capacitance.',
+      halfstroke: 'Straight over',
+      halfstrokeHint:
+        'How far either side of nominal a straight-line calibration stays within 1 % of the true curve. The smaller of the two directions: a stroke is only as linear as its worse half.',
+      tiltError: 'Tilt reads as',
+      tiltErrorHint:
+        'The phantom displacement a tenth of a degree of tilt reports: the capacitance it adds, read back through the sensitivity as though it had been a motion.',
+      tiltErrorNote: 'not a target — a surprise',
+    },
+
+    design: {
+      gap: 'Nominal gap',
+      gapTitle:
+        'How far the electrode sits from the mirror. The strongest lever on the page, and it pulls both ways.',
+      outerRadius: 'Outer radius',
+      outerRadiusTitle: 'The outside of the annulus. More area is more capacitance and more mass.',
+      innerRadius: 'Inner radius',
+      innerRadiusTitle:
+        'The inside of the annulus. The actuator sits in the hole, so this is not free to shrink in the real unit.',
+      chamferWidth: 'Chamfer width',
+      chamferWidthTitle:
+        'The countersink, cut into the corners away from the gap. It changes where the fringe field reaches without touching the facing area.',
+      chamferHeight: 'Chamfer depth',
+      chamferHeightTitle: 'How far down the outer face the countersink runs.',
+      thickness: 'Electrode thickness',
+      thicknessTitle:
+        'How thick the metal is. It carries no field, so this moves the answer only through the chamfer it makes room for.',
+      stroke: 'Working stroke',
+      strokeTitle:
+        'How far the mirror travels either side of nominal. The linear half-stroke is searched inside it, and it is clipped if it would close the gap.',
+      tilt: 'Tilt quoted at',
+      tiltTitle:
+        'Relative tilt of the two plates, in degrees. A tenth of a degree is 1.7 mrad, which is the order the real unit sees.',
+      voltage: 'Excitation',
+      voltageTitle:
+        'The capacitance does not depend on this at all. Only the stored energy scales, and it scales as the square.',
+    },
+
+    derived: {
+      width: 'Annulus width',
+      area: 'Facing area',
+      plate: 'Parallel plate ε₀A/d',
+      aspect: 'Width to gap',
+      tiltReach: 'Rim moves by',
+      published: 'Measured in 2015',
+    },
+
+    params: {
+      samples: 'Gaps in the sweep',
+      cellSize: 'Cell size in the gap',
+      truncation: 'Far field reaches',
+      linearTolerance: 'Linear within',
+      convergenceCheck: 'Also run the mesh study',
+    },
+
+    metrics: {
+      c0: 'Capacitance at nominal gap',
+      sensitivity: 'Sensitivity dC/dz',
+      halfstroke: 'Linear half-stroke',
+      tiltDeg: 'Tilt coefficient',
+      tiltRad: 'Tilt coefficient, in radians',
+      tiltError: 'Tilt reads as displacement',
+      fringe: 'Fringe excess',
+      plate: 'Parallel-plate value',
+      charge: 'Capacitance, charge route',
+      energy: 'Stored energy',
+      eMax: 'Peak field',
+      eMaxNote:
+        'Does not converge, and that is the physics rather than the mesh: the electrode’s rim is a right angle, and a right angle has an unbounded field. A coarse grid reports the gap field V/d; every refinement climbs towards the corner. Read it as how sharp the rim is.',
+    },
+
+    checks: {
+      consistency: 'The two routes to C agree',
+      consistencyTitle:
+        'Stored energy against integrated charge. The same number for a converged discrete solution, so this measures the linear solve rather than the mesh.',
+      benchmark: 'Against the 2015 measurement',
+      benchmarkTitle:
+        'The external check: the solved sweep against a published fit, over the whole range. Expected to worsen as the design moves away from the sensor that was measured — a different chamfer is a different sensor.',
+      tiltBenchmark: 'Tilt against its published fit',
+      tiltBenchmarkTitle:
+        'The second published curve, which the first one implies through the hybrid method. Independent of the benchmark above.',
+      fit: 'The curve fits its own points',
+      fitTitle:
+        'How far the fitted reciprocal quadratic sits from the solved points. Large means this geometry is not in the measurement’s family, and every derivative on the page would be describing the fit.',
+    },
+
+    fields: {
+      potential: 'Potential',
+      potentialHint:
+        'Volts. One on the electrode, zero on the mirror’s coating and at the far edge of the window. The crowding at the rim is the fringe field the exercise is about.',
+      field: 'Field strength',
+      fieldHint:
+        'Volts per metre. Read the peak at the chamfer with suspicion: a sharp corner has an unbounded field in the continuum, so it rises with resolution rather than converging.',
+    },
+
+    overlays: {
+      axes: 'Axes',
+      electrode: 'Electrode',
+      electrodeTitle: 'The outline as it was sent, chamfer and all.',
+      gap: 'The gap',
+      gapTitle:
+        'Where the answer comes from, and far too thin to see at the scale of the window the far field needs.',
+      gapMark: '{gap} µm',
+      shell: 'mirror',
+    },
+
+    invalid: {
+      radii: 'The outer radius has to be at least 0.2 mm outside the inner one.',
+      chamfers: 'Two chamfers that wide would meet in the middle of the annulus.',
+      tooDeep: 'The chamfer is deeper than the electrode is thick.',
+    },
+
+    hint: {
+      insensitive:
+        'Under 0.30 nF/mm. Sensitivity comes from a close gap and a wide annulus — and closing the gap is what costs stroke, so try the annulus first.',
+      short:
+        '{short} µm short of a straight ±10 µm. Opening the gap straightens the curve, and it will cost sensitivity: the two targets are the same lever pulled opposite ways.',
+      fringe:
+        'More than a quarter of this capacitance is fringe, so the reading depends on everything around the electrode rather than on the gap. A narrower annulus at this gap is mostly rim.',
+    },
+
+    columns: {
+      sensor: 'Sensor',
+      halfstroke: 'w_lin m',
+      tiltError: 'δz_γ m',
+      fringe: 'fringe',
+      benchmark: 'vs 2015',
+      consistency: 'W vs Q',
+    },
+
+    plots: {
+      gap: 'gap (µm)',
+      capacitance: 'C (nF)',
+      tilt: 'tilt (degrees)',
+      solved: 'solved',
+      published: 'measured 2015',
+      plate: 'parallel plate',
+      inferred: 'inferred',
+      nominal: 'nominal',
+      quoted: 'quoted at',
+    },
+
+    calibrationIdle: 'Computed on every attempt.',
+    calibrationNote:
+      'Solved against the 2015 measurement: {percent} % apart at worst across the sweep. The lowest curve is what a parallel plate of the same area would give — the gap between it and the others is the fringe field.',
   },
 };

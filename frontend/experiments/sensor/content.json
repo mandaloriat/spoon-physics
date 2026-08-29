@@ -1,0 +1,180 @@
+{
+  "id": "sensor",
+  "title": "How well can a capacitor measure a gap?",
+  "subtitle": "Sensitivity, the stroke it stays straight over, and the tilt that lies to you",
+  "intro": "An annular electrode faces a mirror 90 micrometres away. The capacitance between them says how far away the mirror is — but a capacitance is one number, and a sensor needs a curve. Sweep the gap, fit the curve, and read off what a controller would actually be handed.",
+  "challenge": {
+    "statement": "Characterise the annular capacitive sensor at its nominal 90 µm gap: report the sensitivity dC/dz, the half-stroke over which a linear calibration stays within 1 %, and the tilt cross-sensitivity. Sensitivity at least 0.30 nF/mm in magnitude, linear over at least ±10 µm, and a fringe excess below 0.25 — a sensor whose capacitance is mostly fringe is a sensor whose reading depends on everything except the gap. Runs that leave the model's domain of validity do not count.",
+    "plain_statement": "Make the sensor read at least 0.30 nF for every millimetre the mirror moves, and keep that reading straight over at least ±10 µm. Its capacitance may be at most 25 % more than a flat plate of the same area would give.",
+    "targets": [
+      {
+        "metric": "dC_dz",
+        "comparator": ">",
+        "value": 3e-7,
+        "unit": "F/m",
+        "absolute": true
+      },
+      {
+        "metric": "linear_halfstroke",
+        "comparator": ">",
+        "value": 1e-5,
+        "unit": "m"
+      },
+      {
+        "metric": "fringe_excess",
+        "comparator": "<",
+        "value": 0.25,
+        "unit": "1"
+      }
+    ],
+    "requires_valid": true,
+    "requires_verified": {
+      "metric": "energy_charge_consistency_rel",
+      "below": 0.01
+    },
+    "next_step": "the same stroke from a different chamfer, at the same gap"
+  },
+  "prediction": {
+    "question": "The two plates are tilted by a tenth of a degree — about the thickness of a hair across the electrode. What does the sensor report?",
+    "options": [
+      {
+        "id": "nothing",
+        "label": "Nothing much: a tilt is not a movement"
+      },
+      {
+        "id": "closer",
+        "label": "That the mirror has moved closer"
+      },
+      {
+        "id": "further",
+        "label": "That the mirror has moved further away"
+      },
+      {
+        "id": "noise",
+        "label": "A reading that jumps about"
+      }
+    ],
+    "allow_unknown": true
+  },
+  "explain": [
+    {
+      "id": "curvature",
+      "heading": "A tilt always reads as an approach",
+      "body": [
+        "One side of the electrode moves closer and the other moves away by the same amount. If the capacitance were a straight line in the gap, the two would cancel exactly.",
+        "It is not a straight line — it is roughly one over the gap, which curves upward as the gap closes. The side that closes gains more than the side that opens loses, so the average goes **up**, and up means closer.",
+        "This run reports {tiltError} µm of motion the mirror never made."
+      ]
+    },
+    {
+      "id": "trade",
+      "heading": "Sensitivity and stroke are the same lever, pulled opposite ways",
+      "body": [
+        "The curvature that makes a tilt lie is the same curvature that makes a straight-line calibration go wrong over a long stroke. Closing the gap steepens the curve — more sensitivity — and bends it — less usable stroke.",
+        "This attempt reads {sensitivity} nF/mm and stays linear over ±{stroke} µm at a gap of {gap} µm. Opening the gap buys stroke and sells sensitivity; nothing buys both."
+      ]
+    },
+    {
+      "id": "fringe",
+      "heading": "A sixth of this capacitance is not between the plates",
+      "body": [
+        "The parallel-plate formula ε₀A/d counts only field that runs straight across the gap. Real field bulges out past the rim, and here that bulge is worth about a sixth — which is why this is solved rather than evaluated.",
+        "It is also why the chamfer matters: cutting the corners away from the gap moves the answer by a couple of per cent without touching the facing area at all."
+      ]
+    }
+  ],
+  "teacher": {
+    "objective": "See why a sensor is characterised by a curve rather than by a number, and meet a cross-sensitivity that is second-order and still large enough to matter.",
+    "prediction": "A tilt of a tenth of a degree — what does the sensor report?",
+    "misconception": "A tilt averages out, because one side gets closer by as much as the other gets further away.",
+    "discussion": "The sensor cannot tell a tilt from a translation. What would you add to the machine — not to the model — to tell them apart?",
+    "prerequisites": "Capacitance of a parallel plate, and reading a slope off a graph.",
+    "duration": "25–35 minutes with the calibration and one redesign."
+  },
+  "sections": [
+    {
+      "id": "problem",
+      "heading": "The problem",
+      "lead": "A telescope mirror floats on nothing, and something has to say where it is.",
+      "body": [
+        "A deformable mirror for a large telescope is a thin shell suspended above a rigid reference body, held in place by nothing but its own control forces. Each control unit is a voice-coil actuator with an annular electrode around it. The electrode is one plate of a capacitor; a gold coating on the back of the mirror is the other. The gap between them is about 90 micrometres, and the loop that keeps the mirror in shape runs on what that capacitor reports.",
+        "Actuator and sensor are therefore in the same place by construction, which is exactly what a decentralised controller wants. What it does not get for free is a *calibration*: how many farads per micron, over what range that number can be treated as constant, and what else the reading responds to."
+      ]
+    },
+    {
+      "id": "curve",
+      "heading": "Why one solve is not an answer",
+      "lead": "The three numbers this page reports are properties of a curve, not of a field.",
+      "body": [
+        "Solve the section once and you get a capacitance. The controller cannot use it. What it inverts a reading with is the **slope** dC/dz; what bounds how far it can invert before the straight line goes wrong is the **linear half-stroke**; and what tells it how much a tilted mirror will fool it is a **quadrature over the same curve**.",
+        "So one press of *Calibrate* is a sweep of gaps and a fit over them. The fit is the reciprocal quadratic the published measurement was reduced in — 1/C as a quadratic in the gap — which is not a curve-fitter's whim: a parallel plate is exactly 1/z, and the fringe field bends it. Fitting in the same family is what makes the benchmark a comparison of like with like, and it makes every derivative analytic rather than a difference of noisy solves."
+      ]
+    },
+    {
+      "id": "model",
+      "heading": "The model",
+      "lead": "Electrostatics on a meridian half-section of a body of revolution.",
+      "body": [
+        "∇·(ε∇V) = 0, with no free charge and a linear dielectric. The section is an (r, z) half-section: the horizontal axis of the picture is a **radius**, and the whole annulus is that picture turned through 360°. The only difference from the plane solvers this lab already runs is a factor of r — in every face area and in the volume element — and it is the difference between a body of revolution and a slice.",
+        "Because the volume element is the revolved one, the capacitance comes back in farads for the whole ring rather than per metre of depth. It is read from the stored energy, C = 2W/V², and again from the charge integrated over the electrode's surface; the two agree for a converged solution, which is what makes their difference a check."
+      ]
+    },
+    {
+      "id": "conductor",
+      "heading": "Where the metal is",
+      "lead": "The electrode is not in the solved domain, and that is not a refinement.",
+      "body": [
+        "A cell-centred method that pins the electrode's *cells* puts the conductor's surface half a cell inside the metal. On most problems that is an error which goes away as the mesh is refined. Not here: the electrode is 4 mm thick, carries no field at all, and is therefore divided coarsely — while the gap the whole answer depends on is 90 µm.",
+        "The lab's first attempt did exactly this and returned a capacitance **four times too small**, with a consistent linear system, both capacitance routes agreeing to five figures, and a machine-precision residual. A wrong number, not an error. What caught it was the benchmark below. Here the metal is excluded from the domain and each face beside it carries the electrode's potential, so the conductor's surface is where the geometry says it is."
+      ]
+    },
+    {
+      "id": "tilt",
+      "heading": "The tilt is inferred, not solved",
+      "lead": "A tilt is not axisymmetric, so it has no meridian section.",
+      "body": [
+        "That is the difficulty, and it is not one more mesh would fix. The original study tried a full three-dimensional solve of the tilted unit and abandoned it: at a 90 µm gap the geometry cannot be perturbed far enough for the capacitance change to be resolved against discretisation error.",
+        "What worked instead is what this page does. At each azimuth the local gap is z₀ + γR·cos θ, the contribution there is the axisymmetric answer at *that* gap, and the sensor sees their average around the ring. It costs no further solves, because it is a quadrature over the curve already computed — and it is only as good as that curve is wide, which is why the sweep spans the tilt's reach at the rim and not merely the working stroke."
+      ]
+    },
+    {
+      "id": "units",
+      "heading": "A tenth of a degree, or a tenth of a radian?",
+      "lead": "The source does not say, and the answer changes everything by a factor of 3283.",
+      "body": [
+        "The measurement this page is checked against reports two fits: the capacitance against gap, and C(γ) = 0.09γ² + 0.0319 nF against tilt. The second one never states its unit.",
+        "It can be settled without asking anyone. The tilt coefficient implied by the *first* curve through the method above is 297 nF/rad², which is 0.0905 nF/deg² — half a per cent from the printed 0.09. The radian reading would be off by a factor of three thousand. So the printed coefficient is per degree squared, the control on this page is in degrees, and the metric is reported both ways so nobody has to take that on trust."
+      ]
+    },
+    {
+      "id": "conditions",
+      "heading": "What is fixed, and what is yours",
+      "lead": "The shape is yours; the duty is what the mirror asks of it.",
+      "body": [
+        "The electrode's four lengths and the nominal gap are controls. The excitation is one volt and could be anything — the capacitance does not depend on it, and only the stored energy scales.",
+        "The working stroke is ±50 µm, which is the actuator's excursion, and the tilt is quoted at a tenth of a degree, which is about 1.7 milliradians and the order the real unit sees. Both are duty rather than shape: they set what the calibration is measured over, not what the sensor is."
+      ]
+    },
+    {
+      "id": "verification",
+      "heading": "How you know the numbers",
+      "lead": "Four checks, and one of them is not a self-consistency test.",
+      "body": [
+        "**The benchmark is the unusual one.** The answer this run is compared against was computed in 2015, by a different code on a different formulation, and published. That makes it a genuine external check rather than the model agreeing with itself — and it is the check that caught the conductor-surface bug described above.",
+        "The other three are internal and still worth reading. The two routes to the capacitance — stored energy and integrated charge — are the same number for a converged discrete solution, so their difference measures the linear solve. The fit residual says whether this geometry belongs to the published measurement's family at all, which matters because every derivative on the page is taken from the fit. And the mesh study, when it is switched on, halves the cell size and doubles the truncation to say what the resolution was worth.",
+        "One expectation to set: as you move the design away from the measured sensor, the benchmark *should* get worse. A different chamfer is a different sensor, and a check that stayed green through every redesign would not be checking anything."
+      ]
+    },
+    {
+      "id": "limits",
+      "heading": "What this model cannot tell you",
+      "lead": "It is a calibration, not a sensor.",
+      "body": [
+        "There is no time in this model. A real unit is read by a carrier at tens of kilohertz, and what sets its *resolution* — noise, demodulation, the loss tangent of whatever is in the gap — is electronics this page says nothing about. What is here is the curve those electronics would be given.",
+        "Both plates are assumed flat. The mirror shell deflects locally under the actuator that shares this unit's footprint, and the original study names that curvature as the next-order effect it did not analyse. A curved plate is not a gap, and no control here approximates one.",
+        "And there is one sensor. The real reference body carries hundreds of them; an axisymmetric section cannot hold two, so nothing here describes crosstalk between neighbours. Good while the gap is far smaller than the spacing, which it is here by two orders of magnitude — and worth remembering as an assumption rather than a fact."
+      ],
+      "caution": true
+    }
+  ]
+}

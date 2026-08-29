@@ -124,26 +124,30 @@ def render(values: np.ndarray, shape, mask, colormap: str, symmetric: bool) -> n
     return np.flipud(rgb)
 
 
-def crop(result, half: float):
-    """Keep the part of a `grid2d` result within `half` of the origin, and nothing else.
+def window(result, xmin: float, ymin: float, xmax: float, ymax: float):
+    """Keep the part of a `grid2d` result inside a rectangle, and nothing else.
 
     The window a solve needs and the frame a picture wants are different sizes, and the honest
     way to have both is to solve the first and show part of it. Returns a new result rather
     than mutating: the caller may want the whole field too.
+
+    A rectangle rather than a half-width, because not every subject sits at the origin. An
+    annular electrode has no reason to model its own centreline, so its field lives eleven
+    millimetres out and a crop centred on zero would keep the empty half.
     """
     ny, nx = result.data["shape"]
-    xmin, ymin, xmax, ymax = result.data["bounds"]
-    x = np.linspace(xmin, xmax, nx)
-    y = np.linspace(ymin, ymax, ny)
-    keep_x = np.nonzero(np.abs(x) <= half)[0]
-    keep_y = np.nonzero(np.abs(y) <= half)[0]
+    left, bottom, right, top = result.data["bounds"]
+    x = np.linspace(left, right, nx)
+    y = np.linspace(bottom, top, ny)
+    keep_x = np.nonzero((x >= xmin) & (x <= xmax))[0]
+    keep_y = np.nonzero((y >= ymin) & (y <= ymax))[0]
     if not len(keep_x) or not len(keep_y):
-        # Reachable by asking for a crop finer than the raster, which is a mistake in the
+        # Reachable by asking for a frame finer than the raster, which is a mistake in the
         # caller rather than in the solve. Said plainly, because the alternative is an
         # IndexError three lines later that names neither number.
         raise SystemExit(
-            f"crop half-width {half} keeps no sample points of a raster spanning "
-            f"{result.data['bounds']} at {ny} x {nx}: raise the resolution or the crop"
+            f"the frame [{xmin}, {ymin}, {xmax}, {ymax}] keeps no sample points of a raster "
+            f"spanning {result.data['bounds']} at {ny} x {nx}: raise the resolution or widen it"
         )
     take = np.ix_(keep_y, keep_x)
 
@@ -157,6 +161,11 @@ def crop(result, half: float):
     if result.data.get("mask") is not None:
         data["mask"] = np.asarray(result.data["mask"]).reshape(ny, nx)[take].ravel().tolist()
     return result.model_copy(update={"data": data})
+
+
+def crop(result, half: float):
+    """The square of side ``2 * half`` about the origin. What three of the four cards want."""
+    return window(result, -half, -half, half, half)
 
 
 # -------------------------------------------------------------------------------- the solves
@@ -455,6 +464,64 @@ def render_lattice(result, field: str, colormap: str, window) -> np.ndarray:
     return np.flipud(rgb)
 
 
+def sensor() -> None:
+    """The electrode's own fringe field, on the exercise's own solver.
+
+    Cropped hard, and that is the picture rather than a framing preference: the solve needs a
+    window several annulus widths across so the far field has somewhere to decay, and the thing
+    worth seeing is a 90 µm gap and the crowding at the chamfer. The whole window would be a
+    card of dark air with a bright hairline in it.
+
+    Coloured with the page's own map for `V`, read out of the vendored viewer like every other
+    card here.
+    """
+    inner, outer, thickness, chamfer, gap = 0.011, 0.0145, 0.004, 0.0015, 90e-6
+    top = gap + thickness
+    result = solve(
+        "lab.capacitor_axi2d",
+        {
+            "type": "axisymmetric2d",
+            "bounds": [0.0, 0.0, 0.030, 0.010],
+            "background": {"eps_r": 1.0},
+            "regions": [
+                {
+                    "name": "electrode",
+                    "shape": {
+                        "type": "polygon2d",
+                        "points": [
+                            [inner, gap],
+                            [outer, gap],
+                            [outer, top - chamfer],
+                            [outer - chamfer, top],
+                            [inner + chamfer, top],
+                            [inner, top - chamfer],
+                        ],
+                    },
+                    "material": {"voltage": 1.0},
+                }
+            ],
+        },
+        # Three gaps: the card wants the nominal field, not the calibration, and the sweep is
+        # the expensive half. The fit still has as many points as it has coefficients, so the
+        # solve is a legal one rather than a special mode that exists for this script.
+        # `resolution` is capped at 512 by the capability's own schema, and the committed set
+        # is generated at THUMB_WIDTH=960 — so this is the one card whose raster is not the
+        # script's width. The crop below takes about half of it either way.
+        {"samples": 3, "cell_size": 4e-5, "truncation": 2.0, "resolution": min(WIDTH, 512)},
+    )
+    trimmed = window(result, inner - 0.004, 0.0, outer + 0.004, thickness + 0.002)
+    write_png(
+        OUT / "sensor.png",
+        render(
+            trimmed.data["fields"]["V"],
+            trimmed.data["shape"],
+            trimmed.data.get("mask"),
+            "viridis",
+            symmetric=False,
+        ),
+    )
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     made = []
@@ -463,6 +530,7 @@ def main() -> int:
         ("solenoid", solenoid),
         ("truss", truss),
         ("heatsink", heatsink),
+        ("sensor", sensor),
     ]:
         try:
             build()

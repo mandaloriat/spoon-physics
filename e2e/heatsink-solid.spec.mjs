@@ -95,3 +95,41 @@ test('the section keeps its sweep, and says nothing about a spreading it cannot 
   // had no way to ask, and the panel says which of the two it is.
   await expect(page.locator('#metrics')).toContainText('needs the whole body');
 });
+
+test('an attempt says which of the two models made it', async ({ page }) => {
+  // The one thing the second solver made necessary. The challenge reads `t_max` against 95 °C
+  // and the two models disagree by a few per cent on the same sink — enough to move an attempt
+  // across the line — so a pass or a fail that did not say which model produced it would have a
+  // hidden argument inside it.
+  await page.goto('/experiments/heatsink/');
+  await expect(page.locator('#attempt-model')).toHaveCount(0);
+
+  await page.click('#run');
+  await expect(page.locator('#status')).toContainText('Done', SOLVE);
+  await expect(page.locator('#attempt-model')).toContainText('cross-section');
+
+  await page.selectOption('#solver', 'lab.heatsink3d');
+  await page.click('#run');
+  await expect(page.locator('#plane-note')).not.toBeEmpty(SOLVE);
+
+  // On a solid run the caption compares rather than asserts, because the solver publishes both
+  // numbers — and there is still exactly one caption, not one per attempt.
+  await expect(page.locator('#attempt-model')).toContainText('whole body');
+  await expect(page.locator('#attempt-model')).toContainText('K/W');
+  await expect(page.locator('#attempt-model')).toHaveCount(1);
+});
+
+test('the lesson explains the third dimension, in both languages', async ({ page }) => {
+  // A new phenomenon with no prose is an instrument nobody explained, which is the thing
+  // ADR-021 and ADR-022 between them forbid.
+  for (const [suffix, heading] of [
+    ['', 'The length the section could not see'],
+    ['?lang=it', 'La lunghezza che la sezione non vedeva'],
+  ]) {
+    await page.goto(`/experiments/heatsink/${suffix}`);
+    await expect(page.locator('#lesson')).toContainText(heading);
+    await expect(page.locator('#lesson')).toContainText(
+      suffix ? 'resistenza di diffusione' : 'spreading resistance',
+    );
+  }
+});

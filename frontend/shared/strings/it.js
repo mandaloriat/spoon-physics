@@ -331,6 +331,12 @@ export default {
       question: 'Più alette raffreddano sempre meglio?',
       mission: '30 W sotto 95 °C, con 170 g di alluminio.',
     },
+    sensor: {
+      domain: '04 / Metrologia',
+      time: '8–12 min',
+      question: 'Un condensatore può dirti dov’è uno specchio?',
+      mission: 'Un terzo di nanofarad per millimetro, dritti su venti micron.',
+    },
     /* Il laboratorio avanzato: ora un collegamento nel footer, non uno scaffale. */
     solenoid: {
       name: 'Campo magnetico in una sezione 2D',
@@ -347,6 +353,8 @@ export default {
     methodTruss: '<strong>Ponte</strong> — un elemento di asta per ogni asta, risolto una volta.',
     methodHeatsink:
       '<strong>Dissipatore</strong> — conduzione nel metallo, con convezione e irraggiamento sulle superfici.',
+    methodSensor:
+      '<strong>Sensore di traferro</strong> — elettrostatica su una sezione di un solido di rivoluzione, risolta a una serie di traferri.',
     methodSolenoid: '<strong>Magnetostatica</strong> — il campo in una sezione bidimensionale.',
     capabilityChecking: 'Verifica di che cosa è installato su questo server…',
     capabilityBoth:
@@ -1144,6 +1152,12 @@ export default {
     model: {
       section: 'La sezione trasversale',
       solid: 'Il corpo intero',
+      attemptSection:
+        'Letto sulla sezione trasversale, che assume il componente scaldi la base in modo uniforme su tutta la lunghezza.',
+      attemptSolid:
+        "Letto sul corpo intero. La sezione trasversale avrebbe messo la resistenza a {extruded} K/W contro {solid} — stesso dissipatore, un'ipotesi in meno.",
+      attemptSolidAlone:
+        'Letto sul corpo intero, senza una run sulla sezione con cui confrontarlo.',
       sectionNote:
         "Si assume che il componente scaldi la base uniformemente su tutta la lunghezza. Esatto per la conduzione, ed è l'ipotesi che un componente reale rompe.",
       solidNote:
@@ -1280,5 +1294,199 @@ export default {
       radiative: 'quota radiativa',
       best: 'migliore',
     },
+  },
+  sensor: {
+    title: 'Sensore capacitivo di traferro — Spoon Physics',
+    description:
+      'Un sensore capacitivo di spostamento come esercizio di progetto: tara un elettrodo anulare su un traferro di 90 µm, scambia sensibilità con corsa lineare, e guarda quanto movimento riporta un decimo di grado di inclinazione. Confrontato con una misura pubblicata nel 2015.',
+    missionHeading: 'Tara il sensore di traferro.',
+    missionConstraint: '|dC/dz| > 0,30 nF/mm · lineare su ±10 µm · frangia < 0,25',
+    whyTarget: 'Perché questo obiettivo?',
+    run: 'Calibra',
+    reset: 'Ripristina il sensore',
+    ready:
+      'Pronto. Premi Calibra: una pressione spazza il traferro e adatta la curva, pochi secondi.',
+    readingHint: 'Letti sulla curva adattata, a ogni tentativo.',
+    more: 'Elettrodo, servizio e numerica',
+    electrodeHeading: 'L’elettrodo',
+    dutyHeading: 'Che cosa gli si chiede',
+    dutyLead:
+      'Non la forma — il servizio. Stabiliscono su che cosa la taratura è misurata, e l’inclinazione è in gradi perché è l’unità che il fit pubblicato ha usato.',
+    designNote:
+      'Il traferro è la leva più forte e tira in due direzioni: chiuderlo rende la curva più ripida e la piega di più.',
+    calibrationCurve: 'La curva di taratura',
+    calibration: 'Capacità contro traferro',
+    tiltHeading: 'E contro inclinazione',
+    fitSection: 'Inquadra l’elettrodo',
+    maintenanceAlternative: 'la curva di taratura e le verifiche dei tentativi conservati',
+    noSolver: 'Nessun solutore per il sensore su questo server.',
+    noSolverHere:
+      'Su questo server non è installato alcun solutore per il sensore capacitivo, quindi la pagina può mostrare la spiegazione ma non può calcolare. Tutto ciò che sta sotto il banco resta leggibile.',
+    stageAria:
+      'Campo calcolato su una sezione meridiana. L’asse orizzontale è un raggio. Trascina per spostare, più e meno per ingrandire.',
+    sectionNote:
+      'Una semisezione meridiana di un solido di rivoluzione. L’asse orizzontale è il raggio r misurato dall’asse del sensore; l’anello intero è questa immagine ruotata di 360°.',
+    noResolution:
+      'Nessuna cifra di rumore e nessuna risoluzione: questo modello è elettrostatico, e ciò che limita la risoluzione di un sensore vero è l’elettronica di lettura alla sua frequenza portante. Qui c’è la taratura che quell’elettronica riceverebbe.',
+    tiltNote:
+      'Questa curva è dedotta, non risolta. Un’inclinazione non ha sezione meridiana, quindi ogni azimut è trattato come localmente assialsimmetrico con il proprio traferro e l’anello è integrato sulla curva qui sopra — il metodo usato dalla tesi dopo che un tentativo tridimensionale completo non riuscì a risolvere la variazione a questo traferro. Non costa calcolo aggiuntivo, ed è buona solo quanto la curva sopra è larga.',
+    shapeLabel: '{inner}–{outer} mm a {gap} µm, svaso {chamfer} mm',
+
+    goal: {
+      sensitivity: 'Sensibilità: almeno 0,30 nF/mm',
+      halfstroke: 'Dritta su: almeno ±10 µm',
+      fringe: 'Eccesso di frangia: al massimo 0,25',
+      published: 'Misurata nel 2015: 0,0319 nF',
+      tilt: 'Misurato nel 2015: 0,09 nF/grado²',
+    },
+
+    headline: {
+      sensitivity: 'Sensibilità',
+      sensitivityHint:
+        'Di quanto si muove la capacità per millimetro di traferro, al traferro nominale. Il numero con cui un controllore inverte una lettura — ed è negativo, perché chiudere il traferro alza la capacità.',
+      halfstroke: 'Dritta su',
+      halfstrokeHint:
+        'Fin dove, da entrambe le parti del nominale, una taratura lineare resta entro l’1 % della curva vera. La minore delle due direzioni: una corsa è lineare solo quanto la sua metà peggiore.',
+      tiltError: 'L’inclinazione legge',
+      tiltErrorHint:
+        'Lo spostamento fantasma che riporta un decimo di grado di inclinazione: la capacità che aggiunge, riletta attraverso la sensibilità come se fosse stata un movimento.',
+      tiltErrorNote: 'non un obiettivo — una sorpresa',
+    },
+
+    design: {
+      gap: 'Traferro nominale',
+      gapTitle:
+        'Quanto l’elettrodo sta lontano dallo specchio. La leva più forte della pagina, e tira in due direzioni.',
+      outerRadius: 'Raggio esterno',
+      outerRadiusTitle: 'L’esterno dell’anello. Più area è più capacità e più massa.',
+      innerRadius: 'Raggio interno',
+      innerRadiusTitle:
+        'L’interno dell’anello. L’attuatore sta nel foro, quindi nell’unità vera non è libero di stringersi.',
+      chamferWidth: 'Larghezza svaso',
+      chamferWidthTitle:
+        'Lo svaso, tagliato negli spigoli dalla parte opposta al traferro. Cambia dove arriva il campo di frangia senza toccare l’area affacciata.',
+      chamferHeight: 'Profondità svaso',
+      chamferHeightTitle: 'Quanto in basso lungo la faccia esterna scende lo svaso.',
+      thickness: 'Spessore elettrodo',
+      thicknessTitle:
+        'Quanto è spesso il metallo. Non porta campo, quindi sposta la risposta solo attraverso lo svaso a cui fa spazio.',
+      stroke: 'Corsa di lavoro',
+      strokeTitle:
+        'Quanto viaggia lo specchio da entrambe le parti del nominale. La semicorsa lineare si cerca lì dentro, e viene ridotta se chiuderebbe il traferro.',
+      tilt: 'Inclinazione quotata a',
+      tiltTitle:
+        'Inclinazione relativa delle due piastre, in gradi. Un decimo di grado è 1,7 mrad, che è l’ordine che l’unità vera vede.',
+      voltage: 'Eccitazione',
+      voltageTitle:
+        'La capacità non ne dipende affatto. Scala solo l’energia immagazzinata, e scala come il quadrato.',
+    },
+
+    derived: {
+      width: 'Larghezza anello',
+      area: 'Area affacciata',
+      plate: 'Piastra piana ε₀A/d',
+      aspect: 'Larghezza su traferro',
+      tiltReach: 'Il bordo si sposta di',
+      published: 'Misurato nel 2015',
+    },
+
+    params: {
+      samples: 'Traferri nella spazzata',
+      cellSize: 'Cella nel traferro',
+      truncation: 'Il campo lontano arriva a',
+      linearTolerance: 'Lineare entro',
+      convergenceCheck: 'Esegui anche lo studio di griglia',
+    },
+
+    metrics: {
+      c0: 'Capacità al traferro nominale',
+      sensitivity: 'Sensibilità dC/dz',
+      halfstroke: 'Semicorsa lineare',
+      tiltDeg: 'Coefficiente di inclinazione',
+      tiltRad: 'Coefficiente di inclinazione, in radianti',
+      tiltError: 'L’inclinazione letta come spostamento',
+      fringe: 'Eccesso di frangia',
+      plate: 'Valore a piastra piana',
+      charge: 'Capacità, via carica',
+      energy: 'Energia immagazzinata',
+      eMax: 'Campo di picco',
+      eMaxNote:
+        'Non converge, ed è fisica e non griglia: il bordo dell’elettrodo è uno spigolo retto, e uno spigolo retto ha campo illimitato. Una griglia grossolana riporta il campo di traferro V/d; ogni raffinamento sale verso lo spigolo. Leggilo come quanto è vivo il bordo.',
+    },
+
+    checks: {
+      consistency: 'Le due vie a C coincidono',
+      consistencyTitle:
+        'Energia immagazzinata contro carica integrata. Lo stesso numero per una soluzione discreta convergente, quindi misura la soluzione lineare e non la griglia.',
+      benchmark: 'Contro la misura del 2015',
+      benchmarkTitle:
+        'Il controllo esterno: la spazzata risolta contro un fit pubblicato, su tutto l’intervallo. Deve peggiorare man mano che il progetto si allontana dal sensore misurato — uno svaso diverso è un sensore diverso.',
+      tiltBenchmark: 'Inclinazione contro il suo fit pubblicato',
+      tiltBenchmarkTitle:
+        'La seconda curva pubblicata, che la prima implica attraverso il metodo ibrido. Indipendente dal confronto qui sopra.',
+      fit: 'La curva si adatta ai propri punti',
+      fitTitle:
+        'Quanto la quadratica reciproca adattata dista dai punti risolti. Grande significa che questa geometria non è nella famiglia della misura, e ogni derivata della pagina descriverebbe il fit.',
+    },
+
+    fields: {
+      potential: 'Potenziale',
+      potentialHint:
+        'Volt. Uno sull’elettrodo, zero sulla doratura dello specchio e sul bordo esterno della finestra. L’addensarsi al bordo è il campo di frangia di cui parla l’esercizio.',
+      field: 'Intensità di campo',
+      fieldHint:
+        'Volt al metro. Leggi il picco allo svaso con sospetto: uno spigolo vivo ha campo illimitato nel continuo, quindi cresce con la risoluzione invece di convergere.',
+    },
+
+    overlays: {
+      axes: 'Assi',
+      electrode: 'Elettrodo',
+      electrodeTitle: 'Il contorno così come è stato inviato, svaso compreso.',
+      gap: 'Il traferro',
+      gapTitle:
+        'Da dove viene la risposta, e troppo sottile per vedersi alla scala della finestra che il campo lontano richiede.',
+      gapMark: '{gap} µm',
+      shell: 'specchio',
+    },
+
+    invalid: {
+      radii: 'Il raggio esterno deve stare almeno 0,2 mm fuori da quello interno.',
+      chamfers: 'Due svasi così larghi si incontrerebbero in mezzo all’anello.',
+      tooDeep: 'Lo svaso è più profondo di quanto l’elettrodo sia spesso.',
+    },
+
+    hint: {
+      insensitive:
+        'Sotto 0,30 nF/mm. La sensibilità viene da un traferro stretto e da un anello largo — e chiudere il traferro è ciò che costa corsa, quindi prova prima l’anello.',
+      short:
+        '{short} µm sotto i ±10 µm dritti. Aprire il traferro raddrizza la curva, e costerà sensibilità: i due obiettivi sono la stessa leva tirata al contrario.',
+      fringe:
+        'Più di un quarto di questa capacità è frangia, quindi la lettura dipende da tutto ciò che sta attorno all’elettrodo invece che dal traferro. Un anello più stretto a questo traferro è quasi tutto bordo.',
+    },
+
+    columns: {
+      sensor: 'Sensore',
+      halfstroke: 'w_lin m',
+      tiltError: 'δz_γ m',
+      fringe: 'frangia',
+      benchmark: 'vs 2015',
+      consistency: 'W vs Q',
+    },
+
+    plots: {
+      gap: 'traferro (µm)',
+      capacitance: 'C (nF)',
+      tilt: 'inclinazione (gradi)',
+      solved: 'risolta',
+      published: 'misurata 2015',
+      plate: 'piastra piana',
+      inferred: 'dedotta',
+      nominal: 'nominale',
+      quoted: 'quotata a',
+    },
+
+    calibrationIdle: 'Calcolata a ogni tentativo.',
+    calibrationNote:
+      'Risolta contro la misura del 2015: al massimo {percent} % di scarto lungo la spazzata. La curva più bassa è quella che darebbe una piastra piana della stessa area — il divario fra quella e le altre è il campo di frangia.',
   },
 };

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title data-i18n="sensor.title">Capacitive gap sensor — Spoon Physics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" data-i18n-attr="content: sensor.description" content="A capacitive displacement sensor as a design exercise: calibrate an annular electrode over a 90 µm gap, trade sensitivity against linear stroke, and see what a tenth of a degree of tilt reports as motion. Checked against a measurement published in 2015.">
+<meta name="color-scheme" content="dark">
+<link rel="alternate" hreflang="en" href="/experiments/sensor/?lang=en">
+<link rel="alternate" hreflang="it" href="/experiments/sensor/?lang=it">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/shared/lab.css">
+<!-- The language, before the first paint. Same rule and same safety timeout as the homepage;
+     see the note there and ADR-020. -->
+<script>
+(function () {
+  try {
+    var asked = new URLSearchParams(location.search).get('lang');
+    var stored = window.localStorage && localStorage.getItem('spoon-physics:lang');
+    var wanted = [asked, stored].concat(navigator.languages || [navigator.language || '']);
+    for (var i = 0; i < wanted.length; i += 1) {
+      var code = String(wanted[i] || '').slice(0, 2).toLowerCase();
+      if (code === 'en' || code === 'it') {
+        document.documentElement.lang = code;
+        if (code !== 'en') document.documentElement.setAttribute('data-lang-pending', '');
+        break;
+      }
+    }
+  } catch (error) {
+    // A blocked store, or no URL API: English, visible, now.
+  }
+  setTimeout(function () {
+    document.documentElement.removeAttribute('data-lang-pending');
+  }, 2000);
+})();
+</script>
+<!-- Three packages, and no `@fenix-spoon/geometry-2d`: there is no outline to drag here. The
+     electrode is an annulus described by four lengths, and a spline handle over a meridian
+     section would invite a shape the solver refuses. See ADR-012 for the same choice on the
+     solenoid, and `app.js` for why it is sharper here.
+     The last entry is a *module* and not a package on purpose — `shared/curve.js` takes
+     `@fenix-spoon/plot`'s axis arithmetic and deliberately not its element (ADR-024). -->
+<script type="importmap">
+{
+  "imports": {
+    "@fenix-spoon/client": "/vendor/fenix-spoon/client/index.js",
+    "@fenix-spoon/viewer": "/vendor/fenix-spoon/viewer/index.js",
+    "@fenix-spoon/plot/scale.js": "/vendor/fenix-spoon/plot/scale.js"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="header"></div>
+
+<!-- The bench, instrument-first (ADR-025). Nothing from the exercise contract is deleted —
+     the nine sections are all reachable from the details row. -->
+<main class="bench bench--instrument">
+
+  <!-- ------------------------------------------------------------ 1. the mission strip -->
+  <header class="strip" id="mission">
+    <h1 class="strip__title" data-i18n="sensor.missionHeading">Calibrate the gap sensor.</h1>
+    <p class="strip__constraint" data-i18n="sensor.missionConstraint">|dC/dz| &gt; 0.30 nF/mm · linear over ±10 µm · fringe &lt; 0.25</p>
+    <button type="button" class="strip__why" id="mission-why-toggle" aria-expanded="false"
+            aria-controls="mission-why" data-i18n="sensor.whyTarget">Why this target?</button>
+  </header>
+
+  <section class="drawer" id="mission-why" hidden aria-labelledby="challenge-heading">
+    <h2 id="challenge-heading" class="drawer__title" data-i18n="bench.mission">The challenge</h2>
+    <div id="challenge"></div>
+    <section class="guide" id="guide" aria-labelledby="guide-heading">
+      <h2 id="guide-heading" class="visually-hidden" data-i18n="guide.heading">Before you start</h2>
+    </section>
+  </section>
+
+  <!-- Not displayed since ADR-025; `mountPath` keeps recording so nothing loses its storage. -->
+  <div class="path" id="path" hidden role="group" aria-label="The path through this challenge"
+       data-i18n-attr="aria-label: path.label"></div>
+
+  <p id="widgets-missing" class="notice notice--warn" hidden data-i18n-html="bench.widgetsMissing">
+    The browser widgets have not been built. Run
+    <code>./scripts/fetch-widgets.sh</code> and reload the page.
+  </p>
+  <p id="maintenance" class="notice notice--warn" hidden></p>
+
+  <!-- --------------------------------------------------- 2. the instrument and the rail -->
+  <div class="bench__main">
+
+    <section class="workspace" id="workspace" aria-labelledby="workspace-heading">
+      <h2 id="workspace-heading" class="visually-hidden" data-i18n="bench.workspace">Workspace</h2>
+
+      <div class="workspace__frame">
+        <div class="workspace__stage" id="stage" aria-label="Computed field on a meridian section. The horizontal axis is a radius. Drag to pan, plus and minus to zoom."
+             data-i18n-attr="aria-label: sensor.stageAria">
+          <div class="workspace__zoom">
+            <fs-viewer id="viewer" field="V" colormap="viridis" contours="14" colorbar="off"></fs-viewer>
+            <svg class="workspace__overlay" id="overlay" preserveAspectRatio="none" aria-hidden="true"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- §6's renderer note, and it is not a caption: the workspace draws a plane domain, the
+           horizontal axis here is a **radius**, and a page that let that pass would be teaching
+           a slice. The overlay carries the axis marks; this says what the picture is. -->
+      <p class="workspace__note" id="section-note" data-i18n="sensor.sectionNote">
+        A meridian half-section of a body of revolution. The horizontal axis is the radius
+        <em>r</em> measured from the sensor's centreline; the whole annulus is this picture
+        turned through 360°.
+      </p>
+
+      <div class="workspace__hud">
+        <div class="workspace__toolbar" role="toolbar" aria-label="Visualisation tools"
+             data-i18n-attr="aria-label: bench.visualisationTools"></div>
+        <label class="workspace__fieldpick" for="field">
+          <span class="visually-hidden" data-i18n="bench.field">Field</span>
+          <select id="field" aria-label="Field shown" data-i18n-attr="aria-label: bench.fieldShown"></select>
+        </label>
+      </div>
+
+      <div class="workspace__layerbar"></div>
+
+      <div class="workspace__scale" id="scale" aria-hidden="true"></div>
+      <div class="workspace__readout" id="readout" hidden></div>
+    </section>
+
+    <aside class="rail">
+      <form class="rail__block controls" id="controls" aria-labelledby="controls-heading" onsubmit="return false">
+        <h2 id="controls-heading" class="rail__label" data-i18n="bench.design">Your choices</h2>
+        <div id="design-controls"></div>
+        <p class="field__hint" id="design-note"></p>
+      </form>
+
+      <details class="rail__more" id="advanced">
+        <summary><span data-i18n="sensor.more">Electrode, duty and numerics</span> →</summary>
+        <div class="group__body">
+          <h4 data-i18n="sensor.electrodeHeading">The electrode</h4>
+          <div id="shape-controls"></div>
+
+          <h4 data-i18n="sensor.dutyHeading">What it is asked to do</h4>
+          <p class="field__hint" data-i18n="sensor.dutyLead">
+            Not the shape — the duty. These set what the calibration is measured over, and the
+            tilt is in degrees because that is the unit the published fit used.
+          </p>
+          <div id="duty-controls"></div>
+          <button type="button" class="disclose" id="derived-toggle" aria-expanded="false" aria-controls="derived-wrap"
+                  data-i18n="bench.whatFollows">
+            Derived values
+          </button>
+          <div id="derived-wrap" hidden>
+            <dl class="stats stats--derived" id="derived"></dl>
+          </div>
+
+          <h4 data-i18n="bench.numericsHeading">Numerics</h4>
+          <p class="field__hint" data-i18n="bench.advancedError">
+            These change the error, not the answer. How much they change it is what the checks
+            panel measures.
+          </p>
+          <div id="numerical"></div>
+          <p class="field__hint" id="solver-hint"></p>
+          <select id="solver" aria-label="Solver" hidden data-i18n-attr="aria-label: bench.solverLabel"></select>
+        </div>
+      </details>
+
+      <div class="rail__block rail__reading">
+        <p class="rail__label" data-i18n="bench.reading">Reading</p>
+        <div class="kpis" id="kpis"></div>
+        <p class="field__hint" id="reading-hint" data-i18n="sensor.readingHint">Read off the fitted curve, on every attempt.</p>
+        <div class="rail__lights" id="credibility-lights"></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="predictbar" id="predict-panel" hidden aria-labelledby="predict-heading">
+    <h2 id="predict-heading" class="visually-hidden" data-i18n="prediction.heading">Before you compute</h2>
+    <div id="prediction"></div>
+    <button type="button" class="predictbar__dismiss" id="predict-dismiss" data-i18n="prediction.dismiss">Not now</button>
+  </section>
+
+  <!-- ------------------------------------------------------------------ 3. the action bar -->
+  <div class="actionbar" id="actionbar">
+    <div class="actionbar__actions">
+      <button id="run" class="primary" type="button" disabled data-i18n="sensor.run">Calibrate</button>
+      <button id="cancel" type="button" hidden data-i18n="bench.cancel">Cancel</button>
+      <button id="keep" type="button" disabled data-i18n="bench.keep">Keep attempt</button>
+      <button id="reset" type="button" data-i18n="sensor.reset">Reset sensor</button>
+    </div>
+    <div class="actionbar__status">
+      <span class="status-dot" id="dot" data-state="idle"></span>
+      <span id="status" role="status" data-i18n="bench.checkingServer">Checking what this server can do…</span>
+      <progress id="progress" value="0" max="1" hidden></progress>
+    </div>
+    <div class="actionbar__verdict">
+      <p class="outcome" id="outcome" hidden></p>
+      <p class="hint" id="hint" hidden></p>
+    </div>
+    <div class="actionbar__attempts">
+      <span id="attempts" class="attempts"></span>
+      <button id="compare-jump" type="button" class="chip chip--more" hidden
+              data-i18n="bench.compareChip">+ compare</button>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------------- 4. model details row -->
+  <nav class="details-row" id="model-details" aria-label="Model details"
+       data-i18n-attr="aria-label: bench.lesson">
+    <span class="details-row__label" data-i18n="bench.lesson">Model details</span>
+    <button type="button" data-drawer="why-panel" aria-expanded="false" aria-controls="why-panel"
+            data-i18n="bench.why">Why it happens</button>
+    <button type="button" data-drawer="model-panel" aria-expanded="false" aria-controls="model-panel"
+            data-i18n="bench.modelLimits">The model &amp; its limits</button>
+    <button type="button" data-drawer="checks-panel" aria-expanded="false" aria-controls="checks-panel"
+            data-i18n="bench.checksRun">Checks on this run</button>
+    <button type="button" data-drawer="curve-panel" aria-expanded="false" aria-controls="curve-panel"
+            data-i18n="sensor.calibrationCurve">The calibration curve</button>
+    <button type="button" data-drawer="results-panel" aria-expanded="false" aria-controls="results-panel"
+            data-i18n="bench.everyQuantity">All results</button>
+    <button type="button" data-drawer="runs-panel" aria-expanded="false" aria-controls="runs-panel"
+            data-i18n="bench.exportData">Export CSV / JSON</button>
+    <button type="button" data-drawer="teacher-card" aria-expanded="false" aria-controls="teacher-card"
+            data-i18n="teacher.summary">For teachers</button>
+  </nav>
+
+  <section class="drawer" id="why-panel" hidden aria-labelledby="why-heading">
+    <h2 id="why-heading" class="drawer__title" data-i18n="bench.why">Why it happens</h2>
+    <div class="explain" id="explain"></div>
+  </section>
+
+  <section class="drawer" id="model-panel" hidden aria-labelledby="lesson-heading">
+    <h2 id="lesson-heading" class="drawer__title" data-i18n="bench.modelLimits">The model &amp; its limits</h2>
+    <p class="field__hint" id="field-hint"></p>
+    <div class="lesson__blocks" id="lesson"></div>
+  </section>
+
+  <div id="results">
+    <section class="drawer" id="checks-panel" hidden aria-labelledby="trust-heading">
+      <h2 id="trust-heading" class="drawer__title" data-i18n="bench.trust">Is the result credible?</h2>
+      <div id="credibility"></div>
+      <details class="subpanel" id="checks">
+        <summary data-i18n="bench.checks">Numerical checks and model limits</summary>
+        <div id="verification"></div>
+        <div id="validity"></div>
+      </details>
+      <details class="subpanel">
+        <summary data-i18n="bench.cost">Computation details</summary>
+        <dl class="stats" id="stats"></dl>
+        <p class="artifacts" id="artifacts"></p>
+      </details>
+    </section>
+
+    <section class="drawer" id="curve-panel" hidden aria-labelledby="curve-heading">
+      <h2 id="curve-heading" class="drawer__title" data-i18n="sensor.calibration">Capacitance against gap</h2>
+      <div id="calibration-curve" class="plot"></div>
+      <p class="field__hint" id="calibration-note"></p>
+
+      <section id="tilt-panel" aria-labelledby="tilt-heading">
+        <h3 id="tilt-heading" class="drawer__title" data-i18n="sensor.tiltHeading">And against tilt</h3>
+        <div class="sweep-layout">
+          <div id="tilt-curve" class="plot"></div>
+          <dl class="stats" id="tilt-metrics"></dl>
+        </div>
+        <p class="field__hint" data-i18n="sensor.tiltNote">
+          This curve is inferred, not solved. A tilt has no meridian section, so each azimuth is
+          treated as locally axisymmetric with its own gap and the ring is integrated over the
+          curve above — the method the thesis used after a full 3-D attempt failed to resolve
+          the change at this gap. It costs no extra computation, and it is only as good as the
+          curve above is wide.
+        </p>
+      </section>
+    </section>
+
+    <section class="drawer" id="results-panel" hidden aria-labelledby="answer-heading">
+      <h2 id="answer-heading" class="drawer__title" data-i18n="bench.everyQuantity">All results</h2>
+      <div id="prediction-recall"></div>
+      <div id="metrics"></div>
+      <p class="field__hint" data-i18n="sensor.noResolution">
+        No noise figure and no resolution: this model is electrostatic, and what limits a real
+        sensor's resolution is the read-out electronics at its carrier frequency. What is here
+        is the calibration those electronics would be given.
+      </p>
+    </section>
+  </div>
+
+  <section class="drawer" id="runs-panel" hidden aria-labelledby="runs-heading">
+    <h2 id="runs-heading" class="drawer__title" data-i18n="bench.keptRuns">Your attempts</h2>
+    <p class="field__hint" id="runs-note"></p>
+    <div id="runs-table" class="table-scroll"></div>
+    <div class="button-row">
+      <button id="export-csv" type="button" disabled data-i18n="bench.exportCsv">Export CSV</button>
+      <button id="export-json" type="button" disabled data-i18n="bench.exportJson">Export JSON</button>
+      <button id="clear-runs" type="button" disabled data-i18n="bench.deleteAll">Delete all</button>
+    </div>
+    <div id="compare" class="table-scroll"></div>
+  </section>
+
+  <section class="drawer" id="teacher-card" hidden aria-labelledby="teacher-heading">
+    <h2 id="teacher-heading" class="drawer__title" data-i18n="teacher.summary">For teachers</h2>
+    <div id="teacher"></div>
+  </section>
+
+</main>
+
+<div id="footer" class="site-footer">
+  <p class="site-footer__caveat" data-i18n="footer.caveat">Models for exploring ideas, not professional engineering tools.</p>
+</div>
+
+<script type="module" src="/experiments/sensor/app.js"></script>
+<script type="module">
+queueMicrotask(() => {
+  if (!customElements.get('fs-viewer')) {
+    document.getElementById('widgets-missing').hidden = false;
+  }
+});
+</script>
+
+</body>
+</html>
