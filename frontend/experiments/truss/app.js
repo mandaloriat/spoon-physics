@@ -1770,7 +1770,8 @@ function attemptFacts() {
     mass: Math.round(report.metrics?.mass ?? 0),
     bar: index >= 0 ? index : '—',
     barLength: index >= 0 ? members.length[index].toFixed(1) : '—',
-    limitedBy: index >= 0 ? t(limitedByBuckling ? 'truss.members.buckling' : 'truss.members.yield') : '—',
+    limitedBy:
+      index >= 0 ? t(limitedByBuckling ? 'truss.members.buckling' : 'truss.members.yield') : '—',
   };
 }
 
