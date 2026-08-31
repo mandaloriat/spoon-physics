@@ -40,8 +40,13 @@ mkdir -p "$STATE_DIR"
 
 # cron appends to this log forever. Trim it here rather than asking for a logrotate
 # config: the appends are O_APPEND, so shortening the file underneath them is safe.
+#
+# Housekeeping must not cost a deploy. Under `set -e` a trim that fails — a full disk, a
+# transient IO error — would abort the tick before it ever looked at origin, and the box
+# would stop deploying for a reason that has nothing to do with deploying.
 if [ -f "$LOG" ] && [ "$(wc -l < "$LOG")" -gt 5000 ]; then
-  tail -n 2000 "$LOG" > "$LOG.trim" && cat "$LOG.trim" > "$LOG" && rm -f "$LOG.trim"
+  { tail -n 2000 "$LOG" > "$LOG.trim" && cat "$LOG.trim" > "$LOG"; } || true
+  rm -f "$LOG.trim"
 fi
 
 say() { echo "$(date -u +%FT%TZ) $*"; }
@@ -86,22 +91,28 @@ if [ "$FORCE" -eq 0 ] && [ -f "$FAILED" ] && [ "$(cat "$FAILED")" = "$TARGET" ];
   exit 0
 fi
 
+# Move the checkout to exactly the revision this tick decided on, then hand deploy.sh a
+# tree it must not touch. Its own `git pull` would fetch a second time, and anything that
+# landed on origin in between would be built and smoke-tested here under the wrong name:
+# the log would claim TARGET, and a failure would write TARGET into $FAILED and suppress
+# a commit that was never the one that broke.
 say "deploying ${CURRENT:0:7} -> ${TARGET:0:7}"
-if ./scripts/deploy.sh; then
+git merge --ff-only --quiet "$TARGET"
+
+if ./scripts/deploy.sh --no-pull; then
   rm -f "$FAILED"
-  say "deployed $(git rev-parse --short HEAD)."
+  say "deployed ${TARGET:0:7}."
   exit 0
 fi
 
-# deploy.sh pulled, built and started the new revision before the smoke test told it the
-# result was broken, so the lab is serving that revision right now. Put the old one back.
-BROKEN=$(git rev-parse HEAD)
-echo "$BROKEN" > "$FAILED"
-say "deploy of ${BROKEN:0:7} failed its smoke test; rolling back to ${CURRENT:0:7}."
+# deploy.sh built and started the new revision before the smoke test told it the result
+# was broken, so the lab is serving that revision right now. Put the old one back.
+echo "$TARGET" > "$FAILED"
+say "deploy of ${TARGET:0:7} failed its smoke test; rolling back to ${CURRENT:0:7}."
 git reset --hard --quiet "$CURRENT"
 
 if ./scripts/deploy.sh --no-pull; then
-  say "rolled back to ${CURRENT:0:7}; ${BROKEN:0:7} will not be retried until a newer commit lands."
+  say "rolled back to ${CURRENT:0:7}; ${TARGET:0:7} will not be retried until a newer commit lands."
   exit 1
 fi
 
