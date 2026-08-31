@@ -57,14 +57,16 @@
       "id": "iron-path",
       "heading": "The field prefers iron, but it has to cross the air",
       "body": [
-        "Iron offers the flux a far easier path than air. In the gap, though, the field has no alternative. A few millimetres of air can therefore dominate the behaviour of the whole circuit."
+        "Iron offers the flux a far easier path than air. In the gap, though, the field has no alternative. A few millimetres of air can therefore dominate the behaviour of the whole circuit.",
+        "In your attempt the core carries {flux} mWb per metre of depth on {ampereTurns} ampere-turns: that number, not how good the iron is, decides whether the target is met."
       ]
     },
     {
       "id": "leakage",
       "heading": "Leakage is not a defect in the computation",
       "body": [
-        "Some of the flux closes through the air beside the core instead of through the gap. That is what the field does, not an error: the leakage number says how much of the winding's work is going somewhere the circuit was not designed to use."
+        "Some of the flux closes through the air beside the core instead of through the gap. That is what the field does, not an error: the leakage number says how much of the winding's work is going somewhere the circuit was not designed to use.",
+        "In your attempt {leakage}% of the flux misses the core this way."
       ]
     },
     {

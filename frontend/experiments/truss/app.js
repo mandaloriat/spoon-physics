@@ -61,6 +61,7 @@ import {
   showStats,
   syncFieldOptions,
 } from '/shared/experiment.js';
+import { createGuide } from '/shared/guide.js';
 import { contentUrl, t } from '/shared/i18n.js';
 import * as runs from '/shared/runs.js';
 import { createWorkspace, polyline, svgNode } from '/shared/workspace.js';
@@ -105,6 +106,7 @@ const BAR_REACH = 0.35;
 
 const dom = Object.fromEntries(
   [
+    'guide',
     'lesson',
     'viewer',
     'workspace',
@@ -584,6 +586,7 @@ let currentJob = null;
 let selected = new Set();
 let workspace = null;
 let content = null;
+let guide = null;
 
 /** Builder state: which tool has the pointer, and what it has half-done. */
 const build = { tool: 'joint', armed: null, hover: null, pointer: null, history: [] };
@@ -1756,9 +1759,19 @@ function suggestion() {
 function attemptFacts() {
   if (!report) return {};
   const worst = report.metrics?.utilisation_max;
+  const members = report.members ?? {};
+  const index = members.utilisation?.indexOf(worst);
+  const squash = (report.numerics?.yield_strength ?? 250e6) * (report.numerics?.area ?? 0);
+  const compressed = index >= 0 ? members.compressed?.[index] : null;
+  const critical = index >= 0 ? members.critical_load?.[index] : null;
+  const limitedByBuckling = compressed && critical < squash;
   return {
     utilisation: typeof worst === 'number' ? Math.round(100 * worst) : '—',
     mass: Math.round(report.metrics?.mass ?? 0),
+    bar: index >= 0 ? index : '—',
+    barLength: index >= 0 ? members.length[index].toFixed(1) : '—',
+    limitedBy:
+      index >= 0 ? t(limitedByBuckling ? 'truss.members.buckling' : 'truss.members.yield') : '—',
   };
 }
 
@@ -1773,6 +1786,25 @@ function attemptFacts() {
  */
 const path = mountPath(dom.path, { exercise: EXERCISE });
 let prediction = null;
+
+/**
+ * Build the guided path, if this exercise's content file carries one.
+ *
+ * `content.guide` being absent is not an error — it is an exercise that has not been given a
+ * lesson yet, and the page is exactly what it was before. See `airfoil/app.js` for a version
+ * with figures and interactive presets; this page's chapters are prose only.
+ */
+function mountGuide() {
+  if (!content.guide?.length) return;
+  guide = createGuide({
+    root: dom.guide,
+    chapters: content.guide,
+    storageKey: `spoon-physics:guide:${EXERCISE}`,
+    onSkip: () => {
+      dom.workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+  });
+}
 
 function mountLoop() {
   if (content?.prediction) {
@@ -1800,6 +1832,7 @@ try {
   catalogue = solvers;
   mountLoop();
   renderLesson({ content, intro: null, lesson: dom.lesson, open: ['problem'] });
+  mountGuide();
   present();
   refreshRuns();
 

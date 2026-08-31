@@ -38,3 +38,7 @@ playwright-report/
 # from `pyproject.toml` and does not pin a resolution, so a lock committed by accident would
 # quietly become the resolution CI uses.
 /uv.lock
+
+# State for scripts/auto-deploy.sh on a server that polls: its lock, its log, and the
+# revision that last failed to deploy. Per-machine by definition.
+/.auto-deploy/

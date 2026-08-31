@@ -58,21 +58,24 @@
       "id": "surface",
       "heading": "Più superficie aiuta",
       "body": [
-        "Le alette aggiungono superficie attraverso cui il calore può uscire. Finché l'aria riesce a muoversi fra loro e il calore raggiunge bene le estremità, aggiungerne può abbassare la temperatura."
+        "Le alette aggiungono superficie attraverso cui il calore può uscire. Finché l'aria riesce a muoversi fra loro e il calore raggiunge bene le estremità, aggiungerne può abbassare la temperatura.",
+        "Il tuo tentativo ne ha {fins}: guarda nel pannello di studio se la temperatura scende ancora aggiungendone, o se ha già smesso."
       ]
     },
     {
       "id": "channels",
       "heading": "I canali troppo stretti penalizzano l'aria",
       "body": [
-        "In convezione naturale l'aria calda deve salire fra le alette. Quando lo spazio si restringe troppo, questo moto diventa meno efficace. La superficie continua ad aumentare, ma ogni centimetro aggiunto lavora peggio."
+        "In convezione naturale l'aria calda deve salire fra le alette. Quando lo spazio si restringe troppo, questo moto diventa meno efficace. La superficie continua ad aumentare, ma ogni centimetro aggiunto lavora peggio.",
+        "Nel tuo tentativo il canale fra due alette è largo {channel} mm."
       ]
     },
     {
       "id": "radiation",
       "heading": "Anche le superfici si nascondono fra loro",
       "body": [
-        "L'irraggiamento porta calore verso l'ambiente circostante. In un canale stretto, però, un fianco d'aletta vede soprattutto l'aletta vicina, che ha una temperatura simile, e meno la stanza. Anche questa via di raffreddamento perde efficacia."
+        "L'irraggiamento porta calore verso l'ambiente circostante. In un canale stretto, però, un fianco d'aletta vede soprattutto l'aletta vicina, che ha una temperatura simile, e meno la stanza. Anche questa via di raffreddamento perde efficacia.",
+        "Il tuo dissipatore si assesta a {temperature} °C: più sale, più peserebbe la quota di calore persa per irraggiamento, se il canale non gliene togliesse la vista."
       ]
     }
   ],
@@ -84,6 +87,32 @@
     "prerequisites": "Temperatura, potenza e lettura di una curva.",
     "duration": "20–30 minuti con scansione e progetto."
   },
+  "guide": [
+    {
+      "id": "surface",
+      "heading": "Perché il metallo aiuta a raffreddare",
+      "body": [
+        "Tocca un termosifone acceso e senti che scotta più vicino al tubo che sulle alette larghe: il calore lascia il metallo dove il metallo tocca più aria. Più superficie esposta, più vie ha il calore per uscire nello stesso tempo.",
+        "Un dissipatore fa lo stesso lavoro attorno a un componente elettronico: aggiunge alette per moltiplicare la superficie che tocca l'aria, cercando di tenere il componente più freddo possibile senza usare più metallo del necessario."
+      ]
+    },
+    {
+      "id": "channels",
+      "heading": "La sorpresa: più alette non sempre aiutano",
+      "body": [
+        "Sventagliati con un ventaglio le cui stecche sono quasi a contatto: senti pochissima aria muoversi, anche se hai molte stecche. Lo spazio stretto blocca il moto dell'aria più di quanto la superficie in più riesca a compensare.",
+        "Le alette di un dissipatore possono fare lo stesso danno a loro stesse: strette troppo, l'aria calda non riesce più a salire liberamente fra l'una e l'altra. Per questo aggiungere alette non abbassa la temperatura all'infinito — da qualche parte c'è un numero di alette che funziona meglio di ogni altro, e non è né il più piccolo né il più grande possibile."
+      ]
+    },
+    {
+      "id": "play",
+      "heading": "Trova tu il compromesso",
+      "body": [
+        "Il componente da raffreddare, il budget di alluminio e la temperatura massima sono già fissati: il tuo compito è scegliere quante alette mettere, e quanto farle alte e spesse.",
+        "Il pannello di studio calcola una scansione intera del numero di alette in un solo colpo. Guarda dove la temperatura tocca il punto più basso — è il tuo punto di partenza — e poi guarda quanto pesa quella soluzione, perché il punteggio premia chi ci arriva spendendo meno metallo, non chi usa più alette."
+      ]
+    }
+  ],
   "sections": [
     {
       "id": "problem",

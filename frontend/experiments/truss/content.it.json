@@ -67,14 +67,16 @@
       "id": "compression",
       "heading": "Compressione e lunghezza",
       "body": [
-        "Un'asta tesa tende a cedere quando il materiale raggiunge la propria resistenza. Un'asta compressa può invece incurvarsi molto prima. A parità di sezione, le aste lunghe sono particolarmente vulnerabili all'instabilità."
+        "Un'asta tesa tende a cedere quando il materiale raggiunge la propria resistenza. Un'asta compressa può invece incurvarsi molto prima. A parità di sezione, le aste lunghe sono particolarmente vulnerabili all'instabilità.",
+        "Nel tuo tentativo è l'asta **{bar}**, lunga {barLength} m, a decidere la missione: è limitata da {limitedBy}, non dalla resistenza del materiale."
       ]
     },
     {
       "id": "height",
       "heading": "L'altezza cambia il percorso delle forze",
       "body": [
-        "Un traliccio più alto può portare lo stesso carico con forze minori nei correnti superiore e inferiore. In cambio usa diagonali più lunghe e può richiedere più materiale. Non esiste un'altezza migliore in ogni situazione."
+        "Un traliccio più alto può portare lo stesso carico con forze minori nei correnti superiore e inferiore. In cambio usa diagonali più lunghe e può richiedere più materiale. Non esiste un'altezza migliore in ogni situazione.",
+        "Il tuo traliccio, così com'è disegnato, pesa {mass} kg e sfrutta la sua asta più impegnata al {utilisation}% della capacità."
       ]
     }
   ],
@@ -86,6 +88,32 @@
     "prerequisites": "Equilibrio qualitativo delle forze e proporzioni.",
     "duration": "25–40 minuti, secondo quanto è libera la costruzione."
   },
+  "guide": [
+    {
+      "id": "shape",
+      "heading": "Perché serve un triangolo",
+      "body": [
+        "Prendi quattro listelli e uniscili ai vertici con un chiodo per angolo, a formare un quadrato. Spingi un lato di lato: il quadrato si affloscia in un rombo, e non un solo listello ha cambiato lunghezza. Niente in quella forma si oppone a torcersi.",
+        "Ora aggiungi un quinto listello in diagonale. Il quadrato si blocca sul colpo: la diagonale lo ha diviso in due triangoli, e un triangolo non può cambiare i propri angoli senza allungare o accorciare un lato — cosa che i listelli, per ipotesi, non fanno. Un ponte a traliccio è fatto quasi soltanto di questa idea, ripetuta molte volte fra una sponda e l'altra."
+      ]
+    },
+    {
+      "id": "loads",
+      "heading": "Tirare è diverso da spingere",
+      "body": [
+        "Prova a tirare una corda dai due capi: si tende, e regge un carico enorme rispetto al suo peso. Prova a spingerla invece: si piega di lato molto prima di rompersi. Un'asta rigida regge la spinta meglio di una corda, ma anche lei ha un limite — ed è un limite diverso da quello a cui cede il materiale.",
+        "Le aste di questo traliccio si comportano così: quelle tirate cedono quando il materiale si snerva, quelle spinte possono incurvarsi lateralmente molto prima. Un'asta lunga e sottile in compressione è quasi sempre il punto debole di un traliccio, prima ancora che l'acciaio raggiunga il proprio limite."
+      ]
+    },
+    {
+      "id": "play",
+      "heading": "Costruiscilo tu",
+      "body": [
+        "Il traliccio con cui questa pagina si apre porta il traffico ma non basta: un'asta compressa è già oltre quello che può reggere. Hai tre leve che non si equivalgono: la forma — dove metti nodi e diagonali, l'altezza — quanto il traliccio è profondo, e la sezione — quanto sono spesse le aste.",
+        "Trascina i nodi, aggiungi o togli una diagonale, poi calcola. Guarda quale asta si colora di rosso: è quella che ha deciso il risultato, e capire se conviene accorciarla, ispessirla o ridisegnare la geometria intorno a lei è l'esercizio."
+      ]
+    }
+  ],
   "sections": [
     {
       "id": "problem",
